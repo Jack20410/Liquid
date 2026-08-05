@@ -12,7 +12,10 @@ import SwiftData
 struct LiquidApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Account.self,
+            Envelope.self,
+            Transaction.self,
+            AllocationRule.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +28,12 @@ struct LiquidApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
+                .onAppear {
+                    #if DEBUG
+                    SampleData.seedIfNeeded(sharedModelContainer.mainContext)
+                    #endif
+                }
         }
         .modelContainer(sharedModelContainer)
     }
