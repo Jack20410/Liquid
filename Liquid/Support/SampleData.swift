@@ -23,10 +23,20 @@ enum SampleData {
         let existing = (try? context.fetchCount(FetchDescriptor<Account>())) ?? 0
         guard existing == 0 else { return }
 
-        let checking = Account(name: "Checking")
-        let savings = Account(name: "Savings")
-        context.insert(checking)
-        context.insert(savings)
+        // Two banks and a cash account with no bank.
+        let chase = Institution(name: "Chase")
+        let ally = Institution(name: "Ally")
+        context.insert(chase)
+        context.insert(ally)
+
+        let checking = Account(name: "Checking", type: .checking, institution: chase)
+        let card = Account(name: "Sapphire Card", type: .creditCard,
+                           creditLimit: 3000, institution: chase)
+        let savings = Account(name: "Savings", type: .savings, institution: ally)
+        let cash = Account(name: "Cash", type: .cash)
+        for account in [checking, card, savings, cash] {
+            context.insert(account)
+        }
 
         let rent = Envelope(name: "Rent", rule: AllocationRule(strategy: .fixed(800), priority: 0))
         let groceries = Envelope(name: "Groceries", rule: AllocationRule(strategy: .fixed(400), priority: 1))
@@ -44,9 +54,9 @@ enum SampleData {
                                   to: Calendar.current.startOfDay(for: .now)) ?? .now
         }
         func add(_ amount: Decimal, _ type: TransactionType, _ note: String,
-                 on date: Date, envelope: Envelope? = nil) {
+                 on date: Date, account: Account = checking, envelope: Envelope? = nil) {
             context.insert(Transaction(date: date, amount: amount, type: type,
-                                       note: note, account: checking, envelope: envelope))
+                                       note: note, account: account, envelope: envelope))
         }
 
         // Three weeks ago: paycheck, fully distributed per the envelope rules
@@ -65,6 +75,14 @@ enum SampleData {
         add(76.80, .expense, "Weekly shop", on: day(-10), envelope: groceries)
         add(65.20, .expense, "Electric bill", on: day(-8), envelope: utilities)
         add(58.90, .expense, "Weekly shop", on: day(-6), envelope: groceries)
+
+        // Some spending went on the credit card (builds up a balance owed).
+        add(120.00, .expense, "Flights", on: day(-12), account: card, envelope: fun)
+        add(240.00, .expense, "New tyres", on: day(-9), account: card, envelope: savingsEnv)
+
+        // Paid part of the card off from checking (a transfer, not cash flow).
+        context.insert(Transaction(date: day(-5), amount: 200, type: .transfer,
+                                   note: "Card payment", account: checking, toAccount: card))
 
         // A fresh paycheck, not yet distributed → "To Be Budgeted" is $2,000.
         add(2000, .income, "Paycheck", on: day(-3))

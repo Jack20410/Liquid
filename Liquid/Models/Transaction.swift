@@ -19,6 +19,10 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable, Hashable {
     /// Assigning existing money a job by moving it into an envelope. Positive for
     /// envelope balance; excluded from account balance (spec §7.4).
     case allocation
+    /// Money moved between two accounts (e.g. paying a credit card). Leaves the
+    /// source (`account`) and enters the destination (`toAccount`); touches no
+    /// envelope and is excluded from cash flow, like an allocation.
+    case transfer
 
     var id: String { rawValue }
 
@@ -27,6 +31,7 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable, Hashable {
         case .income: "Income"
         case .expense: "Expense"
         case .allocation: "Allocation"
+        case .transfer: "Transfer"
         }
     }
 }
@@ -39,7 +44,10 @@ final class Transaction {
     var amount: Decimal
     var type: TransactionType
     var note: String
+    /// The source account (money in/out). For transfers, this is the "from" side.
     var account: Account?
+    /// The destination account for transfers (the "to" side); nil otherwise.
+    var toAccount: Account?
     var envelope: Envelope?
 
     init(
@@ -49,6 +57,7 @@ final class Transaction {
         type: TransactionType,
         note: String = "",
         account: Account? = nil,
+        toAccount: Account? = nil,
         envelope: Envelope? = nil
     ) {
         self.id = id
@@ -57,6 +66,7 @@ final class Transaction {
         self.type = type
         self.note = note
         self.account = account
+        self.toAccount = toAccount
         self.envelope = envelope
     }
 }

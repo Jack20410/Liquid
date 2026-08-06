@@ -13,9 +13,16 @@ import SwiftData
 /// Operations the app performs against stored budget data.
 @MainActor
 protocol BudgetRepository {
+    // Institutions
+    func createInstitution(name: String) -> Institution
+    func deleteInstitution(_ institution: Institution)
+
     // Accounts
-    func createAccount(name: String) -> Account
-    func renameAccount(_ account: Account, to name: String)
+    @discardableResult
+    func createAccount(name: String, type: AccountType, creditLimit: Decimal?,
+                       institution: Institution?) -> Account
+    func updateAccount(_ account: Account, name: String, type: AccountType,
+                       creditLimit: Decimal?, institution: Institution?)
     func deleteAccount(_ account: Account)
 
     // Envelopes
@@ -28,6 +35,10 @@ protocol BudgetRepository {
     @discardableResult
     func addTransaction(amount: Decimal, date: Date, type: TransactionType,
                         note: String, account: Account?, envelope: Envelope?) -> Transaction
+    /// Move money between two accounts (e.g. paying a credit card). No envelope.
+    @discardableResult
+    func addTransfer(amount: Decimal, date: Date, from: Account, to: Account,
+                     note: String) -> Transaction
     func deleteTransaction(_ transaction: Transaction)
 
     // Paycheck distribution
@@ -49,17 +60,39 @@ struct SwiftDataBudgetRepository: BudgetRepository {
         self.context = context
     }
 
+    // MARK: Institutions
+
+    func createInstitution(name: String) -> Institution {
+        let institution = Institution(name: name)
+        context.insert(institution)
+        save()
+        return institution
+    }
+
+    func deleteInstitution(_ institution: Institution) {
+        context.delete(institution)   // accounts are nullified, not deleted
+        save()
+    }
+
     // MARK: Accounts
 
-    func createAccount(name: String) -> Account {
-        let account = Account(name: name)
+    @discardableResult
+    func createAccount(name: String, type: AccountType, creditLimit: Decimal?,
+                       institution: Institution?) -> Account {
+        let account = Account(name: name, type: type,
+                              creditLimit: type.usesCreditLimit ? creditLimit : nil,
+                              institution: institution)
         context.insert(account)
         save()
         return account
     }
 
-    func renameAccount(_ account: Account, to name: String) {
+    func updateAccount(_ account: Account, name: String, type: AccountType,
+                       creditLimit: Decimal?, institution: Institution?) {
         account.name = name
+        account.type = type
+        account.creditLimit = type.usesCreditLimit ? creditLimit : nil
+        account.institution = institution
         save()
     }
 
@@ -105,6 +138,16 @@ struct SwiftDataBudgetRepository: BudgetRepository {
                         note: String, account: Account?, envelope: Envelope?) -> Transaction {
         let tx = Transaction(date: date, amount: amount, type: type,
                              note: note, account: account, envelope: envelope)
+        context.insert(tx)
+        save()
+        return tx
+    }
+
+    @discardableResult
+    func addTransfer(amount: Decimal, date: Date, from: Account, to: Account,
+                     note: String) -> Transaction {
+        let tx = Transaction(date: date, amount: amount, type: .transfer,
+                             note: note, account: from, toAccount: to)
         context.insert(tx)
         save()
         return tx

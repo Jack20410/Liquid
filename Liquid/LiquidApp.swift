@@ -12,6 +12,7 @@ import SwiftData
 struct LiquidApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+            Institution.self,
             Account.self,
             Envelope.self,
             Transaction.self,
