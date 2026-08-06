@@ -26,6 +26,8 @@ struct DashboardView: View {
     @Query(sort: \Envelope.name) private var envelopes: [Envelope]
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
 
+    @State private var showingCalendar = false
+
     private var isEmpty: Bool {
         accounts.isEmpty && envelopes.isEmpty && transactions.isEmpty
     }
@@ -61,6 +63,19 @@ struct DashboardView: View {
                 }
             }
             .navigationTitle("Dashboard")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingCalendar = true
+                    } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityLabel("Spending calendar")
+                }
+            }
+            .sheet(isPresented: $showingCalendar) {
+                SpendingCalendarView()
+            }
         }
     }
 }
@@ -161,7 +176,7 @@ private struct AccountsCard: View {
     var body: some View {
         DashboardCard(title: "Accounts", onOpen: onOpen) {
             HStack {
-                Text("Total")
+                Text("Net Worth")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -275,24 +290,18 @@ private struct CashFlowCard: View {
                               to: Calendar.current.startOfDay(for: .now)) ?? .now
     }
 
-    /// Daily income (+) and spending (−) inside the window. Allocations are
-    /// budget moves, not cash flow, so they are excluded.
+    /// Daily income (+) and spending (−) inside the window, built from the shared
+    /// `BudgetMath.dailySummaries` helper (allocations excluded).
     private var data: [DayFlow] {
-        let calendar = Calendar.current
-        var byDay: [Date: (income: Double, spending: Double)] = [:]
-        for tx in transactions where tx.date >= windowStart && tx.type != .allocation {
-            let day = calendar.startOfDay(for: tx.date)
-            var entry = byDay[day] ?? (0, 0)
-            if tx.type == .income { entry.income += tx.amount.asDouble }
-            else { entry.spending -= tx.amount.asDouble }
-            byDay[day] = entry
-        }
-        return byDay.flatMap { day, entry in
-            [DayFlow(day: day, kind: "Income", amount: entry.income),
-             DayFlow(day: day, kind: "Spending", amount: entry.spending)]
-        }
-        .filter { $0.amount != 0 }
-        .sorted { $0.day < $1.day }
+        BudgetMath.dailySummaries(transactions)
+            .values
+            .filter { $0.day >= windowStart }
+            .flatMap { summary in
+                [DayFlow(day: summary.day, kind: "Income", amount: summary.income.asDouble),
+                 DayFlow(day: summary.day, kind: "Spending", amount: -summary.spending.asDouble)]
+            }
+            .filter { $0.amount != 0 }
+            .sorted { $0.day < $1.day }
     }
 
     private var selectedSummary: (day: Date, income: Double, spending: Double)? {
