@@ -33,14 +33,21 @@ struct EnvelopesView: View {
                 } else {
                     List {
                         ForEach(envelopes) { envelope in
-                            Button {
-                                editing = .existing(envelope)
+                            NavigationLink {
+                                EnvelopeDetailView(envelope: envelope)
                             } label: {
                                 EnvelopeRow(envelope: envelope)
                             }
-                            .tint(.primary)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    repository.deleteEnvelope(envelope)
+                                }
+                                Button("Edit", systemImage: "pencil") {
+                                    editing = .existing(envelope)
+                                }
+                                .tint(.orange)
+                            }
                         }
-                        .onDelete(perform: delete)
                     }
                 }
             }
@@ -58,11 +65,6 @@ struct EnvelopesView: View {
         }
     }
 
-    private func delete(at offsets: IndexSet) {
-        for index in offsets {
-            repository.deleteEnvelope(envelopes[index])
-        }
-    }
 }
 
 private struct EnvelopeRow: View {

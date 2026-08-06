@@ -98,46 +98,6 @@ struct TransactionsView: View {
     }
 }
 
-private struct TransactionRow: View {
-    let transaction: Transaction
-
-    private var signedColor: Color {
-        switch transaction.type {
-        case .income: .green
-        case .expense: .primary
-        case .allocation: .blue
-        }
-    }
-
-    private var amountText: String {
-        let prefix = transaction.type == .expense ? "−" : "+"
-        return prefix + transaction.amount.asCurrency
-    }
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(transaction.note.isEmpty ? transaction.type.displayName : transaction.note)
-                HStack(spacing: 6) {
-                    Text(transaction.date, format: .dateTime.month().day().year())
-                    if let envelope = transaction.envelope {
-                        Text("· \(envelope.name)")
-                    }
-                    if let account = transaction.account {
-                        Text("· \(account.name)")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text(amountText)
-                .foregroundStyle(signedColor)
-                .monospacedDigit()
-        }
-    }
-}
-
 /// What the edit sheet is currently editing.
 enum TransactionEditTarget: Identifiable {
     case new
