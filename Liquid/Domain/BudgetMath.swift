@@ -119,6 +119,53 @@ enum BudgetMath {
         }
     }
 
+    // MARK: Net worth over time
+
+    struct NetWorthPoint: Identifiable, Equatable {
+        let date: Date   // start-of-day
+        let value: Decimal
+        var id: Date { date }
+    }
+
+    /// A transaction's effect on total net worth: income raises it, expense lowers
+    /// it, and allocations/transfers net to zero (internal moves).
+    private static func netWorthDelta(_ tx: Transaction) -> Decimal {
+        switch tx.type {
+        case .income: tx.amount
+        case .expense: -tx.amount
+        case .allocation, .transfer: 0
+        }
+    }
+
+    /// Running net worth for each day in the trailing `days`-day window, so a
+    /// trend line can be drawn. The first point already includes everything that
+    /// happened before the window (the opening balance).
+    static func netWorthSeries(_ transactions: [Transaction], days: Int,
+                               calendar: Calendar = .current, asOf: Date = .now) -> [NetWorthPoint] {
+        guard days > 0 else { return [] }
+        let end = calendar.startOfDay(for: asOf)
+        guard let start = calendar.date(byAdding: .day, value: -(days - 1), to: end) else { return [] }
+
+        var running: Decimal = 0                 // opening balance before the window
+        var byDay: [Date: Decimal] = [:]
+        for tx in transactions {
+            let day = calendar.startOfDay(for: tx.date)
+            let delta = netWorthDelta(tx)
+            if day < start { running += delta }
+            else if day <= end { byDay[day, default: 0] += delta }
+        }
+
+        var points: [NetWorthPoint] = []
+        var day = start
+        while day <= end {
+            running += byDay[day] ?? 0
+            points.append(NetWorthPoint(date: day, value: running))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return points
+    }
+
     // MARK: Daily cash flow
 
     /// Income and spending for a single calendar day. `spending` is the unsigned
