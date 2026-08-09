@@ -34,27 +34,8 @@ struct RootTabView: View {
                 TransactionsView()
             }
             Tab("Distribute", systemImage: "arrow.branch", value: .distribute) {
-                ComingSoonView(
-                    title: "Distribute Paycheck",
-                    message: "Recording income will propose a split across your envelopes for review before applying. The engine is built and tested; the screen is next."
-                )
+                DistributePaycheckView()
             }
-        }
-    }
-}
-
-private struct ComingSoonView: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView {
-                Label(title, systemImage: "hammer")
-            } description: {
-                Text(message)
-            }
-            .navigationTitle(title)
         }
     }
 }
