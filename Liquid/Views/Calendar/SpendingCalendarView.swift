@@ -23,7 +23,8 @@ struct SpendingCalendarView: View {
 
     /// Start-of-month for the month currently on screen.
     @State private var visibleMonth: Date = Calendar.current.startOfMonth(for: .now)
-    @State private var selectedDay: Date?
+    /// Today is selected on open, so its detail shows immediately.
+    @State private var selectedDay: Date? = Calendar.current.startOfDay(for: .now)
 
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
