@@ -10,30 +10,43 @@ cards can jump the user to another tab.
 | Accounts | `AccountsView` | ✅ |
 | Envelopes | `EnvelopesView` | ✅ |
 | Transactions | `TransactionsView` | ✅ |
-| Distribute | placeholder | ⏳ engine ready, screen pending |
+| Distribute | `DistributePaycheckView` | ✅ |
 
 ## Dashboard (`Views/Dashboard/DashboardView.swift`)
 
-The first screen the user sees (spec FR-15, FR-13). A scroll of cards:
+The first screen the user sees (spec FR-15, FR-13). A scroll of cards, each matching a
+chart form to its data's job. The **card order is user-arrangeable** (see Settings),
+so this lists the cards, not a fixed sequence:
 
-- **To Be Budgeted** — a hero tile showing unallocated income, color-coded: green
-  when income waits for a job, red when envelopes over-claim, neutral at zero, each
-  with a one-line explanation.
-- **Accounts card** — the combined total plus a horizontal bar per account, with
-  direct dollar labels (no axis clutter). Negative balances render red.
-- **Envelopes card** — a bar per envelope on one shared scale, teal for healthy and
-  **red for overspent**. Savings targets appear as a "% of target" label rather than
-  a second bar, so one envelope's large target can't crush the shared x-scale.
-- **Cash Flow · 30 Days** — a diverging daily bar chart around a zero baseline:
-  green income up, red spending down, weekly axis marks, and a legend. **Touch and
-  hold a day** to reveal a callout with that day's in/out totals (via
-  `chartXSelection`). Allocations are excluded, since they are budget moves, not cash
-  flow.
+- **To Be Budgeted** — a hero tile showing unallocated income, color-coded.
+- **Accounts card** — net worth, then accounts **grouped by bank** with a type icon
+  each. Chart choice: **Bars** (a magnitude bar per account) or **Assets/Liabilities**
+  (one stacked green/red bar). Every row taps through to `AccountDetailView`.
+- **Envelopes card** — the top few envelopes as **bullet bars** (fill = balance, tick =
+  target, label = value + % of target; overspent in red) or a **donut** of budgeted
+  balances, user's choice. A **See all** link opens the Envelopes tab; rows tap through
+  to `EnvelopeDetailView`.
+- **Cash Flow · 30 Days** (`CashFlowCard`) — **diverging bars** (green in / red out) or
+  a **daily-net line**, user's choice; tap a day for its in/out totals.
+- **Spending · 30 Days** (`SpendingByCategoryCard`) — spending by envelope as a ranked
+  **bar list** or a **donut**, user's choice; each row navigates to that envelope.
+- **Net Worth trend** (`NetWorthTrendCard`) — a hero value + delta, a W/M/3M/Y range
+  selector, and a scrubable Swift Charts **area** trend (`chartXSelection`). Built on
+  `BudgetMath.netWorthSeries` (income + / expense −, allocations & transfers net-zero;
+  the first point is the opening balance). Defaults to the bottom — this is a
+  money-tracking app, so budget cards lead and the trend is context.
 
-Every card header is tappable and navigates to its tab. With no data at all, the
-screen shows a welcome state that routes the user to add their first account.
+Most card headers are tappable and navigate to their tab. With no data, a welcome
+state routes the user to add their first account. Charts use **Swift Charts**.
 
-Charts are built with **Swift Charts** (`import Charts`).
+### Customizing the dashboard
+Cards, their order, and their chart forms are user preferences stored via `@AppStorage`
+(`DashboardChartStyles.swift`). Four cards offer a chart-form choice (Accounts, Cash
+flow, Spending, Envelopes), each surfaced two ways that stay in sync: an on-card `···`
+menu (`ChartStyleMenu`) and the **Settings** screen. The gear (top-right) opens
+`SettingsView`; its **Customize dashboard** screen (`DashboardCustomizeView`) lets the
+user **drag to reorder** cards and pick each chart form. Card order persists as a
+comma-joined `DashboardCardID` list; unknown/added cards are reconciled on load.
 
 A round **calendar icon** at the top-left (a `topBarLeading` toolbar button) opens the
 Spending Calendar as a sheet.
@@ -106,6 +119,25 @@ edit; swipe to delete.
   by hand, so the form offers only Income and Expense.
 - `TransactionFilterView` — filter by **date range** and by **envelope**; the toolbar
   icon fills in when a filter is active, and a "Clear filters" affordance appears.
+- Transfers also use `TransactionEditView` (a third **Transfer** type with From/To
+  pickers); see the Accounts screen.
+
+## Distribute Paycheck (`Views/Distribute/DistributePaycheckView.swift`)
+
+The signature flow (spec UC-2, FR-10–FR-12): sweep **To Be Budgeted** into envelopes.
+
+- **To distribute** defaults to the current To Be Budgeted; an account picker sets
+  which account the allocations are recorded against.
+- The pure `DistributionEngine` proposes a split from each envelope's rule (fixed,
+  percentage of the amount, fill-to-target, remainder); every envelope's amount is
+  **editable**, with a live "Assigned / remaining" summary and a **Reset to suggested**
+  button.
+- **Confirm** calls `BudgetRepository.applyDistribution`, writing one `.allocation` per
+  funded envelope. Envelope balances rise and To Be Budgeted falls; **account balances
+  and net worth are unchanged** (§7.4). Empty states cover "nothing to distribute" and
+  "no envelopes".
+- Reached from the **Distribute** tab and the **Distribute** button on the To Be
+  Budgeted dashboard card.
 
 ## Shared components (`Views/Shared/`)
 

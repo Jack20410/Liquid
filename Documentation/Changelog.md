@@ -95,6 +95,55 @@ Expanded accounts from a flat list into banks, types, and credit cards:
   balances without touching net worth / envelopes / TBB / cash flow, and
   assets − liabilities == net worth. Test count is now **20**, all passing.
 
+## Distribute Paycheck screen — v1 core complete (uncommitted)
+
+The last core screen (spec UC-2, FR-10–FR-12). `DistributePaycheckView` distributes
+To Be Budgeted across envelopes using the existing `DistributionEngine`: it proposes
+a split from each rule, lets the user edit amounts with a live remainder, and on
+Confirm calls `applyDistribution` (one `.allocation` per envelope). Verified live:
+$2,000 → 800/400/128.2/200/471.8, To Be Budgeted → $0, net worth unchanged.
+
+- Wired to the **Distribute** tab (replacing the placeholder) and a **Distribute**
+  button on the To Be Budgeted card.
+- Differentiated the two category cards with captions: Envelopes "What's left to
+  spend", Spending "Where it went".
+
+With this, the full v1 feature set from the spec is implemented.
+
+## Dashboard: Settings, customization, richer Accounts/Envelopes cards (earlier, uncommitted)
+
+- New **Settings** screen (`Views/Settings/SettingsView.swift`) replacing the old
+  chart-style sheet: general/about (+ a DEBUG reset), and a **Customize dashboard**
+  screen with **drag-to-reorder** cards (`DashboardCardID`, persisted order) and a
+  chart-form picker per card. Opened from a gear toolbar button.
+- **Net worth** simplified to area-only (line variant removed) and defaults to the
+  bottom of the dashboard — budget cards lead in a tracking app.
+- **Accounts card** reworked: **grouped by bank** with type icons, rows tap through to
+  `AccountDetailView`, and a **Bars ↔ Assets/Liabilities (stacked)** choice.
+- **Envelopes card** reworked: top-N **bullet bars** (fill vs target tick, overspent
+  red) or a **donut**, a **See all** link, rows tap through to `EnvelopeDetailView`.
+- Shared `CardHeader` + generic `ChartStyleMenu` (over a `ChartStyleOption` protocol)
+  replace the old `DashboardCard` container. Four cards now offer chart choices, each
+  synced between its on-card menu and Settings via `@AppStorage`.
+
+## Dashboard charts: trends + user-selectable styles (earlier, uncommitted)
+
+Richer, interactive dashboard cards, each matched to its data — with the chart form
+made a user preference:
+
+- New `BudgetMath.netWorthSeries` (running net worth over time) + `NetWorthSeriesTests`.
+- New `NetWorthTrendCard` — hero value, W/M/3M/Y range, scrubable **area/line** trend.
+- New `SpendingByCategoryCard` — spending by envelope as a ranked **bar list** or a
+  **donut**; rows navigate to `EnvelopeDetailView`.
+- `CashFlowCard` gains a **bars/line** choice (daily-net line variant) via a small
+  refactor to a shared card header + `dashboardCard()` modifier.
+- New `DashboardChartStyles.swift` (style enums + `@AppStorage` keys) and
+  `DashboardSettingsView` — each of the three choices is set both by an on-card `···`
+  menu and by a Settings screen (opened from a toolbar gear), kept in sync via
+  `@AppStorage`.
+
+Test count is now **23**, all passing.
+
 ## Deferred to the next version
 
 - **Distribute Paycheck screen** — the last core screen. The engine and repository
