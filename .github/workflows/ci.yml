@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test
+    # Liquid targets iOS 26.5, so the runner needs Xcode 26 (for the iOS 26 SDK
+    # and simulator). Use a macOS image that ships it.
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          echo "Installed iOS runtimes:"
+          xcrun simctl list runtimes | grep -i ios || true
+
+      - name: Pick an iOS simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone")) | .name] | last')
+          if [ -z "$DEVICE" ] || [ "$DEVICE" = "null" ]; then DEVICE="iPhone 16"; fi
+          echo "Using simulator: $DEVICE"
+          echo "DESTINATION=platform=iOS Simulator,name=$DEVICE" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Liquid.xcodeproj \
+            -scheme Liquid \
+            -destination "$DESTINATION" \
+            -only-testing:LiquidTests \
+            CODE_SIGNING_ALLOWED=NO
+        # Unit tests use Swift Testing, so a green run prints
+        # "✔ Test run with N tests … passed", not XCTest's "Executed N tests".
