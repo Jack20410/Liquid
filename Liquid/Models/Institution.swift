@@ -10,7 +10,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Institution {
+final class Institution: Identifiable {
     var id: UUID
     var name: String
 

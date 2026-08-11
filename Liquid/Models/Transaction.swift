@@ -37,7 +37,7 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable, Hashable {
 }
 
 @Model
-final class Transaction {
+final class Transaction: Identifiable {
     var id: UUID
     var date: Date
     /// Always stored as a positive value (spec §6.3).

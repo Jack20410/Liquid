@@ -50,7 +50,7 @@ enum AccountType: String, Codable, CaseIterable, Identifiable, Hashable {
 }
 
 @Model
-final class Account {
+final class Account: Identifiable {
     var id: UUID
     var name: String
     var type: AccountType

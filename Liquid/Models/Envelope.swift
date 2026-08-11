@@ -10,7 +10,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Envelope {
+final class Envelope: Identifiable {
     var id: UUID
     var name: String
     /// Optional savings target for the envelope (spec FR-14).
