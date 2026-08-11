@@ -34,7 +34,7 @@ struct RootTabView: View {
                 TransactionsView()
             }
             Tab("Distribute", systemImage: "arrow.branch", value: .distribute) {
-                DistributePaycheckView()
+                DistributeView()
             }
         }
     }

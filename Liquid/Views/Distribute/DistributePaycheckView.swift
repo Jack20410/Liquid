@@ -16,6 +16,7 @@ import SwiftData
 
 struct DistributePaycheckView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query(sort: \Envelope.name) private var envelopes: [Envelope]
     @Query(sort: \Account.name) private var accounts: [Account]
     @Query private var transactions: [Transaction]
@@ -61,8 +62,12 @@ struct DistributePaycheckView: View {
                     form
                 }
             }
-            .navigationTitle("Distribute")
+            .navigationTitle("Distribute Paycheck")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
                 if toBeBudgeted > 0 && !envelopes.isEmpty {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Confirm", action: confirm)
@@ -171,10 +176,7 @@ struct DistributePaycheckView: View {
                                         remaining: max(0, remaining),
                                         overcommitted: false)
         repository.applyDistribution(result, from: account, date: .now, envelopesByID: byID)
-        // Reset so the screen reflects the new (lower) To Be Budgeted.
-        didSeed = false
-        amount = nil
-        edited = [:]
+        dismiss()
     }
 
     private func ruleLabel(_ rule: AllocationRule) -> String {
