@@ -59,6 +59,15 @@ enum SampleData {
                                        note: note, account: account, envelope: envelope))
         }
 
+        // ~7 weeks ago: an earlier paycheck, also fully distributed — so the
+        // Distribute screen's history has more than one entry to show.
+        add(1800, .income, "Paycheck", on: day(-49))
+        add(800, .allocation, "Paycheck allocation", on: day(-49), envelope: rent)
+        add(360, .allocation, "Paycheck allocation", on: day(-49), envelope: groceries)
+        add(150, .allocation, "Paycheck allocation", on: day(-49), envelope: utilities)
+        add(180, .allocation, "Paycheck allocation", on: day(-49), envelope: fun)
+        add(310, .allocation, "Paycheck allocation", on: day(-49), envelope: savingsEnv)
+
         // Three weeks ago: paycheck, fully distributed per the envelope rules
         // (the spec §7.2 example: 800 / 400 / 100 / 200 / 500).
         add(2000, .income, "Paycheck", on: day(-21))
