@@ -1,0 +1,92 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "blur-material" : null,
+      "hidden" : false,
+      "layers" : [
+        {
+          "blend-mode" : "multiply",
+          "fill-specializations" : [
+            {
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.01628,0.85347,0.49464,1.00000",
+                  "display-p3:0.00000,0.43675,0.76943,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.4448673023897059,
+                    "y" : 0.18881009615384614
+                  },
+                  "stop" : {
+                    "x" : 0.5664780560661765,
+                    "y" : 0.6959855769230769
+                  }
+                }
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.00013,0.85347,0.42673,1.00000",
+                  "display-p3:0.52011,0.76943,0.72696,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.4448673023897059,
+                    "y" : 0.18881009615384614
+                  },
+                  "stop" : {
+                    "x" : 0.5994801240808824,
+                    "y" : 0.7017788461538461
+                  }
+                }
+              }
+            }
+          ],
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "Droplet.svg",
+          "name" : "Droplet"
+        },
+        {
+          "image-name" : "Dollars.svg",
+          "name" : "Dollars",
+          "opacity" : 0.5
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "display-p3:0.55358,0.57279,0.96783,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "AppIcon.svg",
+          "name" : "AppIcon"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
