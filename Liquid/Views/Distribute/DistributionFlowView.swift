@@ -87,7 +87,7 @@ struct DistributionFlowView: View {
     // MARK: Pieces
 
     private func sourceBar(_ layout: Layout) -> some View {
-        RoundedRectangle(cornerRadius: sourceWidth / 2, style: .continuous)
+        Rectangle()
             .fill(LinearGradient(
                 colors: [FlowPalette.source.opacity(0.9), FlowPalette.source.opacity(0.55)],
                 startPoint: .top, endPoint: .bottom))
@@ -111,9 +111,9 @@ struct DistributionFlowView: View {
     }
 
     private func targetBar(_ seg: Segment, layout: Layout, index: Int) -> some View {
-        RoundedRectangle(cornerRadius: targetWidth / 2, style: .continuous)
+        Rectangle()
             .fill(seg.color)
-            .frame(width: targetWidth, height: max(targetWidth, seg.height))
+            .frame(width: targetWidth, height: seg.height)
             .offset(x: layout.flowEndX, y: seg.minY)
             .opacity(opacity(for: seg))
             .animation(.easeOut(duration: 0.5).delay(Double(index) * 0.05 + 0.08), value: revealed)
