@@ -3,13 +3,13 @@
 //  Liquid
 //
 //  A compact, mobile-friendly Sankey-style flow: one source bar (the paycheck)
-//  fans out through curved ribbons into a bar per envelope, thickness proportional
-//  to the amount. It answers "where does the money go?" at a glance, with the exact
-//  amount and share labelled beside each destination.
+//  fans out through soft gradient ribbons into a bar per envelope, thickness
+//  proportional to the amount. It answers "where does the money go?" at a glance,
+//  with the exact amount and share beside each destination.
 //
-//  Bars and ribbons are drawn in a single Canvas so they share one coordinate
-//  space; labels are laid over the same geometry as SwiftUI text so they respect
-//  Dynamic Type and the current color scheme.
+//  Built natively in SwiftUI (no web view): ribbons are gradient-filled `Shape`s in
+//  a ZStack, so each can animate and be highlighted independently. Tapping a slice
+//  emphasises its ribbon and dims the rest; the whole flow grows in on appear.
 //
 
 import SwiftUI
@@ -29,6 +29,9 @@ enum FlowPalette {
 
     /// Neutral color for the grouped "Other" slice.
     static let other: Color = .gray
+
+    /// The "money in" source color (the paycheck bar and the ribbons' origin).
+    static let source: Color = .green
 }
 
 struct DistributionFlowView: View {
@@ -40,92 +43,135 @@ struct DistributionFlowView: View {
     }
 
     let slices: [Slice]
+    /// Called when the highlighted slice changes (nil when cleared). Optional.
+    var onSelect: ((UUID?) -> Void)? = nil
+
+    @State private var selected: UUID?
+    @State private var revealed = false
 
     private var total: Decimal { slices.reduce(0) { $0 + $1.amount } }
 
     // Geometry constants (points).
-    private let sourceWidth: CGFloat = 16
-    private let targetWidth: CGFloat = 11
-    private let segmentGap: CGFloat = 8
-    private let labelGap: CGFloat = 10
-    private let flowFraction: CGFloat = 0.40   // ribbons occupy the left 40%
+    private let sourceWidth: CGFloat = 18
+    private let targetWidth: CGFloat = 12
+    private let segmentGap: CGFloat = 10
+    private let labelGap: CGFloat = 12
+    private let flowFraction: CGFloat = 0.38   // ribbons occupy the left ~38%
 
     var body: some View {
         GeometryReader { geo in
             let layout = layout(in: geo.size)
             ZStack(alignment: .topLeading) {
-                Canvas { context, _ in draw(context, layout) }
+                sourceBar(layout)
 
+                ForEach(Array(layout.segments.enumerated()), id: \.element.id) { index, seg in
+                    ribbon(seg, layout: layout, width: geo.size.width, index: index)
+                }
+                ForEach(Array(layout.segments.enumerated()), id: \.element.id) { index, seg in
+                    targetBar(seg, layout: layout, index: index)
+                }
+                ForEach(Array(layout.segments.enumerated()), id: \.element.id) { index, seg in
+                    labelView(seg, layout: layout, index: index)
+                }
                 ForEach(layout.segments) { seg in
-                    label(for: seg)
-                        .frame(width: layout.labelWidth, height: seg.height, alignment: .leading)
-                        .offset(x: layout.labelX, y: seg.minY)
+                    tapBand(seg, width: geo.size.width)
                 }
             }
         }
-        .frame(height: max(160, CGFloat(slices.count) * 52))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilitySummary)
+        .frame(height: max(170, CGFloat(slices.count) * 56))
+        .onAppear { revealed = true }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Where the money goes")
     }
 
-    // MARK: Label
+    // MARK: Pieces
 
-    @ViewBuilder
-    private func label(for seg: Segment) -> some View {
+    private func sourceBar(_ layout: Layout) -> some View {
+        RoundedRectangle(cornerRadius: sourceWidth / 2, style: .continuous)
+            .fill(LinearGradient(
+                colors: [FlowPalette.source.opacity(0.9), FlowPalette.source.opacity(0.55)],
+                startPoint: .top, endPoint: .bottom))
+            .frame(width: sourceWidth, height: layout.sourceRect.height)
+            .opacity(revealed ? 1 : 0)
+            .animation(.easeOut(duration: 0.45), value: revealed)
+    }
+
+    private func ribbon(_ seg: Segment, layout: Layout, width: CGFloat, index: Int) -> some View {
+        RibbonShape(srcMinY: seg.srcMinY, srcHeight: seg.srcHeight,
+                    dstMinY: seg.minY, dstHeight: seg.height,
+                    startX: layout.flowStartX, endX: layout.flowEndX)
+            .fill(LinearGradient(
+                colors: [FlowPalette.source.opacity(0.40), seg.color.opacity(0.55)],
+                startPoint: UnitPoint(x: layout.flowStartX / max(width, 1), y: 0.5),
+                endPoint: UnitPoint(x: layout.flowEndX / max(width, 1), y: 0.5)))
+            .scaleEffect(x: revealed ? 1 : 0.55, anchor: .leading)
+            .opacity(opacity(for: seg))
+            .animation(.easeOut(duration: 0.5).delay(Double(index) * 0.05), value: revealed)
+            .animation(.easeInOut(duration: 0.22), value: selected)
+    }
+
+    private func targetBar(_ seg: Segment, layout: Layout, index: Int) -> some View {
+        RoundedRectangle(cornerRadius: targetWidth / 2, style: .continuous)
+            .fill(seg.color)
+            .frame(width: targetWidth, height: max(targetWidth, seg.height))
+            .offset(x: layout.flowEndX, y: seg.minY)
+            .opacity(opacity(for: seg))
+            .animation(.easeOut(duration: 0.5).delay(Double(index) * 0.05 + 0.08), value: revealed)
+            .animation(.easeInOut(duration: 0.22), value: selected)
+    }
+
+    private func labelView(_ seg: Segment, layout: Layout, index: Int) -> some View {
         let pct = total > 0 ? (seg.amount / total * 100).asDouble : 0
-        VStack(alignment: .leading, spacing: 1) {
+        let isSelected = selected == seg.id
+        return VStack(alignment: .leading, spacing: 2) {
             Text(seg.name)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
-            Text("\(seg.amount.asCurrency) · \(pct, format: .number.precision(.fractionLength(0...1)))%")
-                .font(.caption)
+            Text("\(seg.amount.asCurrency)  ·  \(pct, format: .number.precision(.fractionLength(0...1)))%")
+                .font(.footnote)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .monospacedDigit()
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(seg.color.opacity(isSelected ? 0.14 : 0)))
+        .frame(width: layout.labelWidth, height: seg.height, alignment: .leading)
+        .offset(x: layout.labelX - 8, y: seg.minY)
+        .opacity(opacity(for: seg))
+        .animation(.easeOut(duration: 0.5).delay(Double(index) * 0.05 + 0.1), value: revealed)
+        .animation(.easeInOut(duration: 0.22), value: selected)
     }
 
-    // MARK: Drawing
+    /// Full-width transparent hit target for a slice (covers its gap too, so there
+    /// are no dead zones between slices).
+    private func tapBand(_ seg: Segment, width: CGFloat) -> some View {
+        let pct = total > 0 ? Int((seg.amount / total * 100).asDouble.rounded()) : 0
+        return Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .frame(width: width, height: seg.height + segmentGap)
+            .offset(x: 0, y: seg.minY - segmentGap / 2)
+            .onTapGesture { toggle(seg.id) }
+            .accessibilityElement()
+            .accessibilityLabel("\(seg.name), \(seg.amount.asCurrency), \(pct) percent")
+            .accessibilityAddTraits(.isButton)
+    }
 
-    private func draw(_ context: GraphicsContext, _ layout: Layout) {
-        guard total > 0, !layout.segments.isEmpty else { return }
+    // MARK: Selection / emphasis
 
-        // Source bar (the paycheck) — a calm green "money in" column.
-        let sourceRadius = min(sourceWidth / 2, layout.sourceRect.height / 2)
-        context.fill(
-            Path(roundedRect: layout.sourceRect, cornerRadius: sourceRadius),
-            with: .linearGradient(
-                Gradient(colors: [Color.green.opacity(0.85), Color.green.opacity(0.5)]),
-                startPoint: CGPoint(x: 0, y: layout.sourceRect.minY),
-                endPoint: CGPoint(x: 0, y: layout.sourceRect.maxY)
-            )
-        )
+    private func toggle(_ id: UUID) {
+        let next: UUID? = (selected == id) ? nil : id
+        withAnimation(.easeInOut(duration: 0.22)) { selected = next }
+        onSelect?(next)
+    }
 
-        let midX = (layout.flowStartX + layout.flowEndX) / 2
-
-        for seg in layout.segments {
-            // Ribbon: source partition (contiguous) → target segment (gapped).
-            var ribbon = Path()
-            ribbon.move(to: CGPoint(x: layout.flowStartX, y: seg.srcMinY))
-            ribbon.addCurve(
-                to: CGPoint(x: layout.flowEndX, y: seg.minY),
-                control1: CGPoint(x: midX, y: seg.srcMinY),
-                control2: CGPoint(x: midX, y: seg.minY))
-            ribbon.addLine(to: CGPoint(x: layout.flowEndX, y: seg.minY + seg.height))
-            ribbon.addCurve(
-                to: CGPoint(x: layout.flowStartX, y: seg.srcMinY + seg.srcHeight),
-                control1: CGPoint(x: midX, y: seg.minY + seg.height),
-                control2: CGPoint(x: midX, y: seg.srcMinY + seg.srcHeight))
-            ribbon.closeSubpath()
-            context.fill(ribbon, with: .color(seg.color.opacity(0.30)))
-
-            // Target bar.
-            let targetRect = CGRect(x: layout.flowEndX, y: seg.minY,
-                                    width: targetWidth, height: seg.height)
-            let targetRadius = min(targetWidth / 2, seg.height / 2)
-            context.fill(Path(roundedRect: targetRect, cornerRadius: targetRadius),
-                         with: .color(seg.color))
-        }
+    private func opacity(for seg: Segment) -> Double {
+        guard revealed else { return 0 }
+        guard let selected else { return 1 }
+        return selected == seg.id ? 1 : 0.2
     }
 
     // MARK: Layout
@@ -156,7 +202,6 @@ struct DistributionFlowView: View {
         let flowEndX = max(flowStartX + 8, size.width * flowFraction)
         let labelX = flowEndX + targetWidth + labelGap
         let labelWidth = max(0, size.width - labelX)
-
         let sourceRect = CGRect(x: 0, y: 0, width: sourceWidth, height: H)
 
         guard total > 0, !slices.isEmpty else {
@@ -168,13 +213,12 @@ struct DistributionFlowView: View {
         let totalGap = segmentGap * CGFloat(max(0, n - 1))
         let usableH = max(0, H - totalGap)
 
-        // Target-side heights are proportional, but with a floor so thin slices
-        // still fit their two-line label; the floor is paid for by shrinking the
-        // taller slices, keeping the total exactly `usableH`. The source side stays
-        // fully proportional, so the ribbons fan out from true proportions.
+        // Target heights are proportional but floored so thin slices still fit a
+        // two-line label; the floor is paid for by the taller slices. The source
+        // side stays fully proportional, so ribbons fan from true proportions.
         let targetHeights = distributedHeights(total: usableH,
                                                weights: slices.map(\.amount),
-                                               minimum: 36)
+                                               minimum: 40)
 
         var segments: [Segment] = []
         var ty: CGFloat = 0     // target cursor (with gaps)
@@ -203,7 +247,6 @@ struct DistributionFlowView: View {
         guard n > 0 else { return [] }
         let values = weights.map(\.asDouble)
         let sum = values.reduce(0, +)
-        // Degenerate cases: no weight, or not enough room to floor everyone.
         guard sum > 0, total >= minimum * CGFloat(n) else {
             return Array(repeating: total / CGFloat(n), count: n)
         }
@@ -232,14 +275,31 @@ struct DistributionFlowView: View {
         for i in 0..<n where pinned[i] { heights[i] = minimum }
         return heights
     }
+}
 
-    private var accessibilitySummary: String {
-        guard total > 0 else { return "No distribution to show." }
-        let parts = slices.map { slice in
-            let pct = (slice.amount / total * 100).asDouble
-            return "\(slice.name), \(slice.amount.asCurrency), \(Int(pct.rounded())) percent"
-        }
-        return "Where the money goes. " + parts.joined(separator: ". ")
+/// A single flow ribbon: a smooth band from a source slice (left) to a target
+/// slice (right), drawn in absolute coordinates so it can be gradient-filled.
+private struct RibbonShape: Shape {
+    let srcMinY: CGFloat
+    let srcHeight: CGFloat
+    let dstMinY: CGFloat
+    let dstHeight: CGFloat
+    let startX: CGFloat
+    let endX: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let midX = (startX + endX) / 2
+        p.move(to: CGPoint(x: startX, y: srcMinY))
+        p.addCurve(to: CGPoint(x: endX, y: dstMinY),
+                   control1: CGPoint(x: midX, y: srcMinY),
+                   control2: CGPoint(x: midX, y: dstMinY))
+        p.addLine(to: CGPoint(x: endX, y: dstMinY + dstHeight))
+        p.addCurve(to: CGPoint(x: startX, y: srcMinY + srcHeight),
+                   control1: CGPoint(x: midX, y: dstMinY + dstHeight),
+                   control2: CGPoint(x: midX, y: srcMinY + srcHeight))
+        p.closeSubpath()
+        return p
     }
 }
 
