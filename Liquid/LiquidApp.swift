@@ -31,7 +31,9 @@ struct LiquidApp: App {
         WindowGroup {
             RootTabView()
                 .onAppear {
-                    #if DEBUG
+                    // Seed demo data only in the Simulator, so a real device you
+                    // run in Debug starts empty for real-life use.
+                    #if DEBUG && targetEnvironment(simulator)
                     SampleData.seedIfNeeded(sharedModelContainer.mainContext)
                     #endif
                 }
