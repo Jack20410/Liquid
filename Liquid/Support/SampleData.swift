@@ -38,12 +38,15 @@ enum SampleData {
             context.insert(account)
         }
 
-        let rent = Envelope(name: "Rent", rule: AllocationRule(strategy: .fixed(800), priority: 0))
-        let groceries = Envelope(name: "Groceries", rule: AllocationRule(strategy: .fixed(400), priority: 1))
-        let utilities = Envelope(name: "Utilities", target: 150,
+        let rent = Envelope(name: "Rent", kind: .bill,
+                            rule: AllocationRule(strategy: .fixed(800), priority: 0))
+        let groceries = Envelope(name: "Groceries", kind: .spending,
+                                 rule: AllocationRule(strategy: .fixed(400), priority: 1))
+        let utilities = Envelope(name: "Utilities", target: 150, kind: .bill,
                                  rule: AllocationRule(strategy: .fillToTarget(150), priority: 2))
-        let fun = Envelope(name: "Fun", rule: AllocationRule(strategy: .percentage(0.10), priority: 3))
-        let savingsEnv = Envelope(name: "Savings", target: 5000,
+        let fun = Envelope(name: "Fun", kind: .spending,
+                           rule: AllocationRule(strategy: .percentage(0.10), priority: 3))
+        let savingsEnv = Envelope(name: "Savings", target: 5000, kind: .goal,
                                   rule: AllocationRule(strategy: .remainder, priority: 4))
         for env in [rent, groceries, utilities, fun, savingsEnv] {
             context.insert(env)

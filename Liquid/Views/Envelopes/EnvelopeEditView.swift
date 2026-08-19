@@ -16,6 +16,7 @@ struct EnvelopeEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String = ""
+    @State private var kind: EnvelopeKind = .spending
     @State private var savingsTarget: Decimal?
     @State private var strategyKind: AllocationStrategy.Kind = .fixed
     @State private var strategyValue: Decimal?
@@ -50,6 +51,18 @@ struct EnvelopeEditView: View {
                 Section("Name") {
                     TextField("e.g. Groceries", text: $name)
                         .focused($nameFocused)
+                }
+
+                Section {
+                    Picker("Kind", selection: $kind) {
+                        ForEach(EnvelopeKind.allCases) { k in
+                            Label(k.displayName, systemImage: k.icon).tag(k)
+                        }
+                    }
+                } header: {
+                    Text("Kind")
+                } footer: {
+                    Text("Only Spending envelopes count toward Safe to Spend. Bills and Goals are money set aside.")
                 }
 
                 Section("Savings Target (optional)") {
@@ -124,6 +137,7 @@ struct EnvelopeEditView: View {
     private func load() {
         if case let .existing(env) = target {
             name = env.name
+            kind = env.kind
             savingsTarget = env.target
             priority = env.rule?.priority ?? 0
             if let strategy = env.rule?.strategy {
@@ -141,9 +155,9 @@ struct EnvelopeEditView: View {
         let envelope: Envelope
         switch target {
         case .new:
-            envelope = repository.createEnvelope(name: trimmed, target: savingsTarget)
+            envelope = repository.createEnvelope(name: trimmed, target: savingsTarget, kind: kind)
         case let .existing(existing):
-            repository.updateEnvelope(existing, name: trimmed, target: savingsTarget)
+            repository.updateEnvelope(existing, name: trimmed, target: savingsTarget, kind: kind)
             envelope = existing
         }
 

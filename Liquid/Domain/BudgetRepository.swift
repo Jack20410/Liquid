@@ -26,8 +26,8 @@ protocol BudgetRepository {
     func deleteAccount(_ account: Account)
 
     // Envelopes
-    func createEnvelope(name: String, target: Decimal?) -> Envelope
-    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?)
+    func createEnvelope(name: String, target: Decimal?, kind: EnvelopeKind) -> Envelope
+    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?, kind: EnvelopeKind)
     func setRule(_ strategy: AllocationStrategy, priority: Int, on envelope: Envelope)
     func deleteEnvelope(_ envelope: Envelope)
 
@@ -103,16 +103,17 @@ struct SwiftDataBudgetRepository: BudgetRepository {
 
     // MARK: Envelopes
 
-    func createEnvelope(name: String, target: Decimal?) -> Envelope {
-        let envelope = Envelope(name: name, target: target)
+    func createEnvelope(name: String, target: Decimal?, kind: EnvelopeKind) -> Envelope {
+        let envelope = Envelope(name: name, target: target, kind: kind)
         context.insert(envelope)
         save()
         return envelope
     }
 
-    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?) {
+    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?, kind: EnvelopeKind) {
         envelope.name = name
         envelope.target = target
+        envelope.kind = kind
         save()
     }
 
