@@ -118,6 +118,11 @@ Documentation/   Overview, architecture, data model, screens, testing
 The full v1 feature set is implemented. Out of scope for v1 (by design): automatic
 bank/card import, multi-device sync, cloud backup, and multi-currency.
 
+## Contributing
+
+Development uses a lean `main` / `develop` git flow with PR-based, CI-gated merges — see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 Released under the MIT License — see [LICENSE](LICENSE).
