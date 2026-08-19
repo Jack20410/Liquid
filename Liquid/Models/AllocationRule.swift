@@ -68,13 +68,15 @@ enum AllocationStrategy: Equatable, Hashable {
 
 @Model
 final class AllocationRule {
-    var id: UUID
+    var id: UUID = UUID()
     /// Persisted representation of the strategy kind. Use `strategy` to read/write.
-    var strategyKind: AllocationStrategy.Kind
+    var strategyKind: AllocationStrategy.Kind = AllocationStrategy.Kind.fixed
     /// Persisted associated value for the strategy (amount, percentage, or target).
-    var strategyValue: Decimal
+    var strategyValue: Decimal = 0
     /// Order of evaluation; lower runs first (spec §6.1).
-    var priority: Int
+    var priority: Int = 0
+    /// Inverse of `Envelope.rule`; required for CloudKit sync.
+    var envelope: Envelope?
 
     var strategy: AllocationStrategy {
         get { AllocationStrategy(kind: strategyKind, value: strategyValue) }

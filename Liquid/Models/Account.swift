@@ -51,9 +51,9 @@ enum AccountType: String, Codable, CaseIterable, Identifiable, Hashable {
 
 @Model
 final class Account: Identifiable {
-    var id: UUID
-    var name: String
-    var type: AccountType
+    var id: UUID = UUID()
+    var name: String = ""
+    var type: AccountType = AccountType.checking
     /// Credit limit, for credit cards only.
     var creditLimit: Decimal?
     /// The bank/brand this account belongs to (nil = unassigned).
@@ -63,13 +63,13 @@ final class Account: Identifiable {
     /// allocations, and the "from" side of transfers. Deleting an account removes
     /// these records (spec §9).
     @Relationship(deleteRule: .cascade, inverse: \Transaction.account)
-    var transactions: [Transaction]
+    var transactions: [Transaction] = []
 
     /// Transfers where this account is the destination (the "to" side). Deleting
     /// the destination account nullifies the reference rather than deleting the
     /// transfer, which still belongs to its source account.
     @Relationship(deleteRule: .nullify, inverse: \Transaction.toAccount)
-    var incomingTransfers: [Transaction]
+    var incomingTransfers: [Transaction] = []
 
     init(
         id: UUID = UUID(),
