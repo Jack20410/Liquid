@@ -99,6 +99,10 @@ struct DashboardView: View {
             ToBeBudgetedCard(amount: BudgetMath.toBeBudgeted(transactions: transactions)) {
                 selectedTab = .distribute
             }
+        case .safeToSpend:
+            if !envelopes.isEmpty {
+                SafeToSpendCard(envelopes: envelopes) { selectedTab = .envelopes }
+            }
         case .accounts:
             if !accounts.isEmpty {
                 AccountsCard(accounts: accounts) { selectedTab = .accounts }
@@ -163,6 +167,86 @@ private struct ToBeBudgetedCard: View {
                     in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("To Be Budgeted: \(amount.asCurrency)")
+    }
+}
+
+// MARK: - Safe to Spend (hero tile)
+
+private struct SafeToSpendCard: View {
+    let envelopes: [Envelope]
+    var onOpen: (() -> Void)?
+
+    /// Spending envelopes, richest first — the ones that make up the number.
+    private var spending: [Envelope] {
+        envelopes
+            .filter { $0.kind.isSafeToSpend }
+            .sorted { BudgetMath.envelopeBalance($0) > BudgetMath.envelopeBalance($1) }
+    }
+
+    private var amount: Decimal { BudgetMath.safeToSpend(envelopes) }
+    private var shown: [Envelope] { Array(spending.prefix(4)) }
+
+    private var statusColor: Color {
+        if amount > 0 { .green } else if amount < 0 { .red } else { .secondary }
+    }
+
+    private var caption: String {
+        if spending.isEmpty { "Tag an envelope as Spending to track what's safe to spend." }
+        else if amount > 0 { "What's left in your spending envelopes, after bills and goals." }
+        else if amount < 0 { "You've overspent your spending envelopes." }
+        else { "Your spending envelopes are empty." }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Safe to Spend")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(amount.asCurrency)
+                .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(statusColor)
+                .contentTransition(.numericText())
+            Text(caption)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            if !shown.isEmpty {
+                Divider().padding(.vertical, 4)
+                VStack(spacing: 8) {
+                    ForEach(shown) { env in
+                        let balance = BudgetMath.envelopeBalance(env)
+                        HStack {
+                            Image(systemName: env.kind.icon)
+                                .font(.caption).foregroundStyle(.secondary).frame(width: 18)
+                            Text(env.name).font(.subheadline)
+                            Spacer()
+                            Text(balance.asCurrency)
+                                .font(.subheadline).monospacedDigit()
+                                .foregroundStyle(balance < 0 ? .red : .primary)
+                        }
+                    }
+                }
+                if let onOpen {
+                    Button(action: onOpen) {
+                        HStack(spacing: 4) {
+                            Text(spending.count > shown.count
+                                 ? "See all \(spending.count) envelopes" : "See envelopes")
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .padding(.top, 2)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Safe to Spend: \(amount.asCurrency)")
     }
 }
 

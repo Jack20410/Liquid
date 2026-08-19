@@ -96,6 +96,15 @@ enum BudgetMath {
         }
     }
 
+    /// Money free to spend right now: the combined balance of the day-to-day
+    /// *spending* envelopes, leaving bills and savings goals untouched. Overspent
+    /// spending envelopes lower it, so it can go negative (surface that in red).
+    static func safeToSpend(_ envelopes: [Envelope]) -> Decimal {
+        envelopes
+            .filter { $0.kind.isSafeToSpend }
+            .reduce(0) { $0 + envelopeBalance($1) }
+    }
+
     /// Progress toward an envelope's savings target in 0...1, or nil when no
     /// target is set (spec FR-14).
     static func targetProgress(_ envelope: Envelope) -> Double? {
