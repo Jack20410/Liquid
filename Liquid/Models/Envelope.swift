@@ -11,21 +11,22 @@ import SwiftData
 
 @Model
 final class Envelope: Identifiable {
-    var id: UUID
-    var name: String
+    var id: UUID = UUID()
+    var name: String = ""
     /// Optional savings target for the envelope (spec FR-14).
     var target: Decimal?
 
     /// The allocation rule used at distribution time. Deleting an envelope
-    /// deletes its rule (spec §9).
-    @Relationship(deleteRule: .cascade)
+    /// deletes its rule (spec §9). The inverse (`AllocationRule.envelope`) is
+    /// required for CloudKit sync.
+    @Relationship(deleteRule: .cascade, inverse: \AllocationRule.envelope)
     var rule: AllocationRule?
 
     /// Allocations in and expenses out. Deleting an envelope nullifies the
     /// envelope reference on these transactions rather than deleting the money
     /// records (spec §9).
     @Relationship(deleteRule: .nullify, inverse: \Transaction.envelope)
-    var transactions: [Transaction]
+    var transactions: [Transaction] = []
 
     init(
         id: UUID = UUID(),
