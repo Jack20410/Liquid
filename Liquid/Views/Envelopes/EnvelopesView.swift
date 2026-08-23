@@ -51,7 +51,7 @@ struct EnvelopesView: View {
                     }
                 }
             }
-            .navigationTitle("Envelopes")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Envelope", systemImage: "plus") { editing = .new }

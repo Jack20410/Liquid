@@ -62,7 +62,7 @@ struct DashboardView: View {
                     .background(Color(.systemGroupedBackground))
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -128,8 +128,8 @@ private struct ToBeBudgetedCard: View {
     var onDistribute: (() -> Void)?
 
     private var statusColor: Color {
-        if amount > 0 { .green }
-        else if amount < 0 { .red }
+        if amount > 0 { Color.increase }
+        else if amount < 0 { Color.decrease }
         else { .secondary }
     }
 
@@ -187,7 +187,7 @@ private struct SafeToSpendCard: View {
     private var shown: [Envelope] { Array(spending.prefix(4)) }
 
     private var statusColor: Color {
-        if amount > 0 { .green } else if amount < 0 { .red } else { .secondary }
+        if amount > 0 { Color.increase } else if amount < 0 { Color.decrease } else { .secondary }
     }
 
     private var caption: String {
@@ -223,7 +223,7 @@ private struct SafeToSpendCard: View {
                             Spacer()
                             Text(balance.asCurrency)
                                 .font(.subheadline).monospacedDigit()
-                                .foregroundStyle(balance < 0 ? .red : .primary)
+                                .foregroundStyle(balance < 0 ? Color.decrease : .primary)
                         }
                     }
                 }
@@ -250,7 +250,7 @@ private struct SafeToSpendCard: View {
     }
 }
 
-private let dashboardPalette: [Color] = [.blue, .orange, .teal, .yellow, .pink]
+private let dashboardPalette: [Color] = Color.categoryPalette
 
 // MARK: - Accounts
 
@@ -323,7 +323,7 @@ private struct AccountsCard: View {
                     .frame(minWidth: 60, alignment: .leading)
                 if style == .bars {
                     GeometryReader { geo in
-                        Capsule().fill(negative ? Color.red : Color.blue)
+                        Capsule().fill(negative ? Color.decrease : Color.accentColor)
                             .frame(width: max(4, geo.size.width * abs(balance.asDouble) / maxMagnitude))
                     }
                     .frame(height: 12)
@@ -331,7 +331,7 @@ private struct AccountsCard: View {
                 Spacer(minLength: 6)
                 Text(balance.asCurrency)
                     .font(.caption).monospacedDigit()
-                    .foregroundStyle(negative ? .red : .secondary)
+                    .foregroundStyle(negative ? Color.decrease : .secondary)
             }
         }
         .buttonStyle(.plain)
@@ -344,17 +344,17 @@ private struct AccountsCard: View {
         return VStack(alignment: .leading, spacing: 6) {
             GeometryReader { geo in
                 HStack(spacing: liabilities > 0 ? 2 : 0) {
-                    Capsule().fill(.green).frame(width: geo.size.width * assets / total)
+                    Capsule().fill(Color.increase).frame(width: geo.size.width * assets / total)
                     if liabilities > 0 {
-                        Capsule().fill(.red).frame(width: geo.size.width * liabilities / total)
+                        Capsule().fill(Color.decrease).frame(width: geo.size.width * liabilities / total)
                     }
                 }
             }
             .frame(height: 16)
             HStack {
-                Text("Assets \(Decimal(assets).asCurrency)").foregroundStyle(.green)
+                Text("Assets \(Decimal(assets).asCurrency)").foregroundStyle(Color.increase)
                 Spacer()
-                Text("Liabilities \(Decimal(liabilities).asCurrency)").foregroundStyle(.red)
+                Text("Liabilities \(Decimal(liabilities).asCurrency)").foregroundStyle(Color.decrease)
             }
             .font(.caption).monospacedDigit()
         }
@@ -435,7 +435,7 @@ private struct EnvelopesCard: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color(.tertiarySystemFill))
-                        Capsule().fill(overspent ? Color.red : item.color)
+                        Capsule().fill(overspent ? Color.decrease : item.color)
                             .frame(width: max(overspent ? 0 : 4, geo.size.width * fraction))
                         if item.target != nil {
                             Rectangle().fill(Color(.label).opacity(0.35))
@@ -447,7 +447,7 @@ private struct EnvelopesCard: View {
                 .frame(height: 12)
                 Text(label(item))
                     .font(.caption2).monospacedDigit()
-                    .foregroundStyle(overspent ? .red : .secondary)
+                    .foregroundStyle(overspent ? Color.decrease : .secondary)
                     .frame(width: 96, alignment: .trailing)
             }
         }
@@ -485,13 +485,13 @@ private struct EnvelopesCard: View {
                         EnvelopeDetailView(envelope: item.envelope)
                     } label: {
                         HStack(spacing: 8) {
-                            Circle().fill(item.balance < 0 ? Color.red : item.color)
+                            Circle().fill(item.balance < 0 ? Color.decrease : item.color)
                                 .frame(width: 10, height: 10)
                             Text(item.name).font(.subheadline)
                             Spacer()
                             Text(item.balance.asCurrency)
                                 .font(.caption).monospacedDigit()
-                                .foregroundStyle(item.balance < 0 ? .red : .secondary)
+                                .foregroundStyle(item.balance < 0 ? Color.decrease : .secondary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -634,7 +634,7 @@ private struct CashFlowCard: View {
 
             selectionRule
         }
-        .chartForegroundStyleScale(["Income": Color.green, "Spending": Color.red])
+        .chartForegroundStyleScale(["Income": Color.increase, "Spending": Color.decrease])
         .chartLegend(position: .bottom, alignment: .leading)
         .chartXScale(domain: xDomain)
         .chartXAxis { cashFlowXAxis }
@@ -649,7 +649,7 @@ private struct CashFlowCard: View {
                 LineMark(x: .value("Day", d.day, unit: .day),
                          y: .value("Net", d.net))
                 .interpolationMethod(.monotone)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.accentColor)
             }
             RuleMark(y: .value("Zero", 0))
                 .foregroundStyle(.quaternary).lineStyle(StrokeStyle(lineWidth: 1))
@@ -705,12 +705,12 @@ private struct SelectedDayCallout: View {
             if income > 0 {
                 Text("In \(Decimal(income).asCurrency)")
                     .font(.caption2)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.increase)
             }
             if spending < 0 {
                 Text("Out \(Decimal(-spending).asCurrency)")
                     .font(.caption2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.decrease)
             }
         }
         .monospacedDigit()

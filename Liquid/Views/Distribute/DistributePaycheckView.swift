@@ -128,7 +128,7 @@ struct DistributePaycheckView: View {
             Text(remaining == 0 ? "All assigned"
                  : overAssigned ? "Over by \((-remaining).asCurrency)"
                  : "\(remaining.asCurrency) left")
-            .foregroundStyle(remaining == 0 ? .green : overAssigned ? .red : .secondary)
+            .foregroundStyle(remaining == 0 ? Color.increase : overAssigned ? Color.decrease : .secondary)
         }
         .font(.callout)
         .monospacedDigit()
