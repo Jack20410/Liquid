@@ -92,8 +92,6 @@ struct DashboardCustomizeView: View {
     @AppStorage(ChartStyleKey.cardOrder) private var orderRaw = DashboardCardID.rawValue(for: DashboardCardID.defaultOrder)
     @AppStorage(ChartStyleKey.cashFlow) private var cashFlowStyle: CashFlowChartStyle = .bars
     @AppStorage(ChartStyleKey.category) private var categoryStyle: CategoryChartStyle = .bars
-    @AppStorage(ChartStyleKey.accounts) private var accountsStyle: AccountsChartStyle = .bars
-    @AppStorage(ChartStyleKey.envelopes) private var envelopeStyle: EnvelopeChartStyle = .bars
 
     private var order: [DashboardCardID] {
         DashboardCardID.order(from: orderRaw)
@@ -137,8 +135,6 @@ struct DashboardCustomizeView: View {
         switch card {
         case .cashFlow: styleMenu($cashFlowStyle)
         case .spending: styleMenu($categoryStyle)
-        case .accounts: styleMenu($accountsStyle)
-        case .envelopes: styleMenu($envelopeStyle)
         default: EmptyView()
         }
     }
