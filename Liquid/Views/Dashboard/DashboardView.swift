@@ -259,7 +259,6 @@ private struct AccountsCard: View {
     let onOpen: () -> Void
 
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(ChartStyleKey.accounts) private var style: AccountsChartStyle = .bars
 
     private var repository: SwiftDataBudgetRepository { SwiftDataBudgetRepository(context: modelContext) }
 
@@ -272,14 +271,10 @@ private struct AccountsCard: View {
             }
     }
 
-    private var maxMagnitude: Double {
-        accounts.map { abs(BudgetMath.accountBalance($0).asDouble) }.max() ?? 1
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Accounts", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: AccountsChartStyle.allCases)
+                EmptyView()
             }
 
             HStack {
@@ -289,7 +284,7 @@ private struct AccountsCard: View {
                     .font(.subheadline.weight(.semibold)).monospacedDigit()
             }
 
-            if style == .stacked { stackedBar }
+            stackedBar
 
             ForEach(groups, id: \.bank) { group in
                 VStack(alignment: .leading, spacing: 6) {
@@ -321,13 +316,6 @@ private struct AccountsCard: View {
                     .font(.footnote).foregroundStyle(.secondary).frame(width: 22)
                 Text(account.name).font(.subheadline).lineLimit(1)
                     .frame(minWidth: 60, alignment: .leading)
-                if style == .bars {
-                    GeometryReader { geo in
-                        Capsule().fill(negative ? Color.red : Color.blue)
-                            .frame(width: max(4, geo.size.width * abs(balance.asDouble) / maxMagnitude))
-                    }
-                    .frame(height: 12)
-                }
                 Spacer(minLength: 6)
                 Text(balance.asCurrency)
                     .font(.caption).monospacedDigit()
@@ -367,8 +355,6 @@ private struct EnvelopesCard: View {
     let envelopes: [Envelope]
     let onOpen: () -> Void
 
-    @AppStorage(ChartStyleKey.envelopes) private var style: EnvelopeChartStyle = .bars
-
     private static let topN = 4
 
     private struct Item: Identifiable {
@@ -392,23 +378,16 @@ private struct EnvelopesCard: View {
     }
 
     private var shown: [Item] { Array(ranked.prefix(Self.topN)) }
-    private var maxBalance: Double { max(ranked.map { $0.balance.asDouble }.max() ?? 1, 1) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Envelopes", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: EnvelopeChartStyle.allCases)
+                EmptyView()
             }
             Text("What's left to spend")
                 .font(.caption).foregroundStyle(.secondary)
 
-            if style == .bars {
-                VStack(spacing: 10) {
-                    ForEach(shown) { bulletRow($0) }
-                }
-            } else {
-                donut
-            }
+            donut
 
             if ranked.count > shown.count {
                 Button(action: onOpen) {
@@ -418,48 +397,6 @@ private struct EnvelopesCard: View {
             }
         }
         .dashboardCard()
-    }
-
-    private func bulletRow(_ item: Item) -> some View {
-        let overspent = item.balance < 0
-        let fraction: Double = {
-            if let t = item.target, t > 0 { return clampUnit(item.balance.asDouble / t.asDouble) }
-            return clampUnit(item.balance.asDouble / maxBalance)
-        }()
-        return NavigationLink {
-            EnvelopeDetailView(envelope: item.envelope)
-        } label: {
-            HStack(spacing: 10) {
-                Text(item.name).font(.subheadline).lineLimit(1)
-                    .frame(width: 76, alignment: .leading)
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(.tertiarySystemFill))
-                        Capsule().fill(overspent ? Color.red : item.color)
-                            .frame(width: max(overspent ? 0 : 4, geo.size.width * fraction))
-                        if item.target != nil {
-                            Rectangle().fill(Color(.label).opacity(0.35))
-                                .frame(width: 2, height: 16)
-                                .position(x: geo.size.width - 1, y: 6)
-                        }
-                    }
-                }
-                .frame(height: 12)
-                Text(label(item))
-                    .font(.caption2).monospacedDigit()
-                    .foregroundStyle(overspent ? .red : .secondary)
-                    .frame(width: 96, alignment: .trailing)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func label(_ item: Item) -> String {
-        if let t = item.target, t > 0 {
-            let pct = Int((clampUnit(item.balance.asDouble / t.asDouble) * 100).rounded())
-            return "\(item.balance.asCurrency) · \(pct)%"
-        }
-        return item.balance.asCurrency
     }
 
     private var donut: some View {
@@ -499,8 +436,6 @@ private struct EnvelopesCard: View {
             }
         }
     }
-
-    private func clampUnit(_ v: Double) -> Double { min(1, max(0, v)) }
 }
 
 // MARK: - Cash flow (last 30 days)

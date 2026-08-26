@@ -14,8 +14,6 @@ import SwiftUI
 enum ChartStyleKey {
     static let category = "dashboard.categoryChartStyle"
     static let cashFlow = "dashboard.cashFlowChartStyle"
-    static let accounts = "dashboard.accountsChartStyle"
-    static let envelopes = "dashboard.envelopeChartStyle"
     static let cardOrder = "dashboard.cardOrder"
 }
 
@@ -38,20 +36,6 @@ enum CashFlowChartStyle: String, CaseIterable, Identifiable, ChartStyleOption {
     var id: String { rawValue }
     var displayName: String { self == .bars ? "Bars" : "Line" }
     var icon: String { self == .bars ? "chart.bar.xaxis" : "chart.xyaxis.line" }
-}
-
-enum AccountsChartStyle: String, CaseIterable, Identifiable, ChartStyleOption {
-    case bars, stacked
-    var id: String { rawValue }
-    var displayName: String { self == .bars ? "Bars" : "Assets/Liabilities" }
-    var icon: String { self == .bars ? "chart.bar" : "chart.bar.horizontal.page" }
-}
-
-enum EnvelopeChartStyle: String, CaseIterable, Identifiable, ChartStyleOption {
-    case bars, donut
-    var id: String { rawValue }
-    var displayName: String { self == .bars ? "Bars" : "Donut" }
-    var icon: String { self == .bars ? "chart.bar" : "chart.pie" }
 }
 
 /// The dashboard's cards, in a user-arrangeable order. Net worth defaults to the
