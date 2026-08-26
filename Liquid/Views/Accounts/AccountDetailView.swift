@@ -87,7 +87,7 @@ struct AccountDetailView: View {
                 Text(owed.asCurrency)
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(owed > 0 ? .red : .primary)
+                    .foregroundStyle(owed > 0 ? .decrease : .primary)
                 if let available = BudgetMath.availableCredit(account), let limit = account.creditLimit {
                     if let utilization = BudgetMath.creditUtilization(account) {
                         ProgressView(value: utilization) {
@@ -95,7 +95,7 @@ struct AccountDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        .tint(utilization > 0.7 ? .red : .accentColor)
+                        .tint(utilization > 0.7 ? .decrease : .accentColor)
                     }
                 }
             }
@@ -109,7 +109,7 @@ struct AccountDetailView: View {
                 Text(balance.asCurrency)
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(balance < 0 ? .red : .primary)
+                    .foregroundStyle(balance < 0 ? .decrease : .primary)
             }
             .padding(.vertical, 4)
         }

@@ -15,10 +15,10 @@ struct TransactionRow: View {
 
     private var signedColor: Color {
         switch transaction.type {
-        case .income: .green
+        case .income: Color.increase
         case .expense: .primary
-        case .allocation: .blue
-        case .transfer: .blue
+        case .allocation: Color.accentColor
+        case .transfer: Color.accentColor
         }
     }
 

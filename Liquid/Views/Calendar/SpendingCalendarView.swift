@@ -169,7 +169,7 @@ private struct DayCell: View {
 
     private var netColor: Color {
         guard let net, net != 0 else { return .secondary }
-        return net > 0 ? .green : .red
+        return net > 0 ? .increase : .decrease
     }
 
     private var netText: String? {
@@ -235,10 +235,10 @@ private struct DayDetailSection: View {
                 .font(.headline)
 
             HStack(spacing: 16) {
-                totalPill(title: "In", value: summary?.income ?? 0, color: .green)
-                totalPill(title: "Out", value: summary?.spending ?? 0, color: .red)
+                totalPill(title: "In", value: summary?.income ?? 0, color: .increase)
+                totalPill(title: "Out", value: summary?.spending ?? 0, color: .decrease)
                 totalPill(title: "Net", value: summary?.net ?? 0,
-                          color: (summary?.net ?? 0) < 0 ? .red : .primary)
+                          color: (summary?.net ?? 0) < 0 ? .decrease : .primary)
             }
 
             Divider()

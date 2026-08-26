@@ -45,7 +45,7 @@ struct DistributeView: View {
                 .padding(16)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Distribute")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { showingForm = true } label: {
@@ -130,9 +130,9 @@ struct DistributeView: View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.branch")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.increase)
                 .frame(width: 30, height: 30)
-                .background(Color.green.opacity(0.15), in: .circle)
+                .background(Color.increase.opacity(0.15), in: .circle)
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline.weight(.medium))
@@ -176,12 +176,14 @@ struct DistributeView: View {
     private func aggregateSlices(from shares: [BudgetMath.DistributionShare],
                                  maxSlices: Int) -> [DistributionFlowView.Slice] {
         guard !shares.isEmpty else { return [] }
-        func slice(_ s: BudgetMath.DistributionShare) -> DistributionFlowView.Slice {
-            .init(id: s.id, name: s.name, amount: s.amount, color: FlowPalette.color(for: s.id))
+        func slice(_ index: Int, _ s: BudgetMath.DistributionShare) -> DistributionFlowView.Slice {
+            .init(id: s.id, name: s.name, amount: s.amount, color: FlowPalette.color(at: index))
         }
-        guard shares.count > maxSlices else { return shares.map(slice) }
+        guard shares.count > maxSlices else {
+            return shares.enumerated().map { slice($0.offset, $0.element) }
+        }
 
-        var result = shares.prefix(maxSlices - 1).map(slice)
+        var result = shares.prefix(maxSlices - 1).enumerated().map { slice($0.offset, $0.element) }
         let otherTotal = shares.dropFirst(maxSlices - 1).reduce(Decimal(0)) { $0 + $1.amount }
         result.append(.init(id: UUID(), name: "Other", amount: otherTotal, color: FlowPalette.other))
         return result

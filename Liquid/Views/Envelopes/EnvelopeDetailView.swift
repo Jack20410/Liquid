@@ -34,7 +34,7 @@ struct EnvelopeDetailView: View {
                     Text(balance.asCurrency)
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(balance < 0 ? .red : .primary)
+                        .foregroundStyle(balance < 0 ? .decrease : .primary)
                     if let target = envelope.target, target > 0,
                        let progress = BudgetMath.targetProgress(envelope) {
                         ProgressView(value: progress) {

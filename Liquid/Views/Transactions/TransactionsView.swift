@@ -65,7 +65,7 @@ struct TransactionsView: View {
                     }
                 }
             }
-            .navigationTitle("Transactions")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Filter", systemImage: filter.isActive

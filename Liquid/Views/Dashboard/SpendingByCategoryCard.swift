@@ -24,7 +24,7 @@ struct SpendingByCategoryCard: View {
         let envelope: Envelope?   // nil for the "Other" bucket
     }
 
-    private static let palette: [Color] = [.blue, .orange, .teal, .yellow, .pink]
+    private static let palette: [Color] = Color.categoryPalette
     private static let windowDays = 30
     private static let topN = 5
 
