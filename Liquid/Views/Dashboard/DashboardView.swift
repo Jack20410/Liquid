@@ -259,7 +259,6 @@ private struct AccountsCard: View {
     let onOpen: () -> Void
 
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(ChartStyleKey.accounts) private var style: AccountsChartStyle = .bars
 
     private var repository: SwiftDataBudgetRepository { SwiftDataBudgetRepository(context: modelContext) }
 
@@ -272,14 +271,10 @@ private struct AccountsCard: View {
             }
     }
 
-    private var maxMagnitude: Double {
-        accounts.map { abs(BudgetMath.accountBalance($0).asDouble) }.max() ?? 1
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Accounts", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: AccountsChartStyle.allCases)
+                EmptyView()
             }
 
             HStack {
@@ -289,7 +284,7 @@ private struct AccountsCard: View {
                     .font(.subheadline.weight(.semibold)).monospacedDigit()
             }
 
-            if style == .stacked { stackedBar }
+            stackedBar
 
             ForEach(groups, id: \.bank) { group in
                 VStack(alignment: .leading, spacing: 6) {
@@ -367,8 +362,6 @@ private struct EnvelopesCard: View {
     let envelopes: [Envelope]
     let onOpen: () -> Void
 
-    @AppStorage(ChartStyleKey.envelopes) private var style: EnvelopeChartStyle = .bars
-
     private static let topN = 4
 
     private struct Item: Identifiable {
@@ -392,23 +385,16 @@ private struct EnvelopesCard: View {
     }
 
     private var shown: [Item] { Array(ranked.prefix(Self.topN)) }
-    private var maxBalance: Double { max(ranked.map { $0.balance.asDouble }.max() ?? 1, 1) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Envelopes", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: EnvelopeChartStyle.allCases)
+                EmptyView()
             }
             Text("What's left to spend")
                 .font(.caption).foregroundStyle(.secondary)
 
-            if style == .bars {
-                VStack(spacing: 10) {
-                    ForEach(shown) { bulletRow($0) }
-                }
-            } else {
-                donut
-            }
+            donut
 
             if ranked.count > shown.count {
                 Button(action: onOpen) {
@@ -499,8 +485,6 @@ private struct EnvelopesCard: View {
             }
         }
     }
-
-    private func clampUnit(_ v: Double) -> Double { min(1, max(0, v)) }
 }
 
 // MARK: - Cash flow (last 30 days)
