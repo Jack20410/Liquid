@@ -316,13 +316,6 @@ private struct AccountsCard: View {
                     .font(.footnote).foregroundStyle(.secondary).frame(width: 22)
                 Text(account.name).font(.subheadline).lineLimit(1)
                     .frame(minWidth: 60, alignment: .leading)
-                if style == .bars {
-                    GeometryReader { geo in
-                        Capsule().fill(negative ? Color.decrease : Color.accentColor)
-                            .frame(width: max(4, geo.size.width * abs(balance.asDouble) / maxMagnitude))
-                    }
-                    .frame(height: 12)
-                }
                 Spacer(minLength: 6)
                 Text(balance.asCurrency)
                     .font(.caption).monospacedDigit()
@@ -404,48 +397,6 @@ private struct EnvelopesCard: View {
             }
         }
         .dashboardCard()
-    }
-
-    private func bulletRow(_ item: Item) -> some View {
-        let overspent = item.balance < 0
-        let fraction: Double = {
-            if let t = item.target, t > 0 { return clampUnit(item.balance.asDouble / t.asDouble) }
-            return clampUnit(item.balance.asDouble / maxBalance)
-        }()
-        return NavigationLink {
-            EnvelopeDetailView(envelope: item.envelope)
-        } label: {
-            HStack(spacing: 10) {
-                Text(item.name).font(.subheadline).lineLimit(1)
-                    .frame(width: 76, alignment: .leading)
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(.tertiarySystemFill))
-                        Capsule().fill(overspent ? Color.decrease : item.color)
-                            .frame(width: max(overspent ? 0 : 4, geo.size.width * fraction))
-                        if item.target != nil {
-                            Rectangle().fill(Color(.label).opacity(0.35))
-                                .frame(width: 2, height: 16)
-                                .position(x: geo.size.width - 1, y: 6)
-                        }
-                    }
-                }
-                .frame(height: 12)
-                Text(label(item))
-                    .font(.caption2).monospacedDigit()
-                    .foregroundStyle(overspent ? Color.decrease : .secondary)
-                    .frame(width: 96, alignment: .trailing)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func label(_ item: Item) -> String {
-        if let t = item.target, t > 0 {
-            let pct = Int((clampUnit(item.balance.asDouble / t.asDouble) * 100).rounded())
-            return "\(item.balance.asCurrency) · \(pct)%"
-        }
-        return item.balance.asCurrency
     }
 
     private var donut: some View {
