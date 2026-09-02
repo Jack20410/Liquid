@@ -19,8 +19,26 @@ struct TransactionsView: View {
     @State private var filter = TransactionFilter()
     @State private var showFilters = false
 
+    // Natural-language "Say it" capture: speak → draft → pre-filled editor.
+    @State private var showVoiceAdd = false
+    @State private var pendingDraft: TransactionDraft?
+    @State private var showDraftEditor = false
+
     private var repository: SwiftDataBudgetRepository {
         SwiftDataBudgetRepository(context: modelContext)
+    }
+
+    private var parseCatalog: ParseCatalog {
+        ParseCatalog(
+            accounts: accounts.map { NamedItem(id: $0.id, name: $0.name) },
+            envelopes: envelopes.map { NamedItem(id: $0.id, name: $0.name) },
+            defaultAccountID: accounts.first?.id)
+    }
+
+    private func prefill(from draft: TransactionDraft) -> TransactionEditView.Prefill {
+        TransactionEditView.Prefill(
+            type: draft.type, amount: draft.amount, date: draft.date,
+            note: draft.note, accountID: draft.accountID, envelopeID: draft.envelopeID)
     }
 
     private var filtered: [Transaction] {
@@ -76,6 +94,13 @@ struct TransactionsView: View {
                     .disabled(transactions.isEmpty)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    // Voice capture, only when on-device intelligence is available.
+                    if OnDeviceTransactionParser.isAvailable {
+                        Button("Say it", systemImage: "mic.fill") { showVoiceAdd = true }
+                            .disabled(accounts.isEmpty)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Transaction", systemImage: "plus") { editing = .new }
                         .disabled(accounts.isEmpty)
                 }
@@ -86,6 +111,23 @@ struct TransactionsView: View {
             }
             .sheet(isPresented: $showFilters) {
                 TransactionFilterView(filter: $filter, envelopes: envelopes)
+            }
+            // Dismiss the voice sheet first, then open the editor from onDismiss so
+            // the two sheets don't compete in the same runloop.
+            .sheet(isPresented: $showVoiceAdd, onDismiss: {
+                if pendingDraft != nil { showDraftEditor = true }
+            }) {
+                VoiceAddView(catalog: parseCatalog) { draft in
+                    pendingDraft = draft
+                    showVoiceAdd = false
+                }
+            }
+            .sheet(isPresented: $showDraftEditor, onDismiss: { pendingDraft = nil }) {
+                if let draft = pendingDraft {
+                    TransactionEditView(target: .new, repository: repository,
+                                        accounts: accounts, envelopes: envelopes,
+                                        prefill: prefill(from: draft))
+                }
             }
         }
     }
