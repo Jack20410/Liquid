@@ -43,8 +43,8 @@ struct OnboardingEnvelopesStep: View {
                     ForEach(presets, id: \.name) { preset in
                         chip(name: preset.name, icon: preset.icon)
                     }
-                    ForEach(customCategories, id: \.self) { name in
-                        chip(name: name, icon: "tag")
+                    ForEach(customEnvelopes, id: \.id) { env in
+                        chip(name: env.name, icon: "tag")
                     }
                     addChip
                 }
@@ -108,12 +108,12 @@ struct OnboardingEnvelopesStep: View {
         envelopes.contains { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
-    /// Spending categories the user added that aren't one of the presets — shown as
+    /// Spending envelopes the user added that aren't one of the presets — shown as
     /// their own (already-added) chips so a custom category is visibly confirmed.
-    private var customCategories: [String] {
-        envelopes
-            .filter { $0.kind == .spending && !isPreset($0.name) }
-            .map(\.name)
+    /// Keyed by envelope id, not name, so two same-named envelopes can't collide
+    /// into duplicate ForEach IDs.
+    private var customEnvelopes: [Envelope] {
+        envelopes.filter { $0.kind == .spending && !isPreset($0.name) }
     }
 
     private func isPreset(_ name: String) -> Bool {
