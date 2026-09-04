@@ -10,8 +10,8 @@ services — private by construction.
 
 <p>
   <img src="Documentation/screenshots/dashboard.png"  width="30%" alt="Dashboard" />
-  <img src="Documentation/screenshots/net-worth.png"  width="30%" alt="Net worth trend" />
-  <img src="Documentation/screenshots/cash-flow.png"  width="30%" alt="Cash flow" />
+  <img src="Documentation/screenshots/distribute.png" width="30%" alt="Distribute a paycheck — where your money goes" />
+  <img src="Documentation/screenshots/accounts.png"   width="30%" alt="Accounts and net worth" />
 </p>
 
 ## Features
@@ -27,12 +27,18 @@ services — private by construction.
 - **Transactions** — record income and expenses (and transfers), edit or delete
   them, and filter by date range and envelope.
 - **Distribute Paycheck** — the signature flow: sweep unbudgeted income into
-  envelopes by their rules, review and adjust the split, then confirm.
-- **Dashboard** — a customizable set of cards: **To Be Budgeted**, accounts,
-  envelopes, cash flow, spending by category, and a net-worth trend. **Drag to
-  reorder** cards and **choose each card's chart type** (e.g. bars vs. donut).
+  envelopes by their rules, review and adjust the split, then confirm. A
+  **"where your money goes"** flow diagram and a log of past distributions show
+  where each paycheck landed.
+- **Safe to Spend** — what's left across your day-to-day *spending* envelopes,
+  once bills and savings goals are set aside.
+- **Dashboard** — a customizable set of cards: **To Be Budgeted**, **Safe to
+  Spend**, accounts (assets-vs-liabilities bar), envelopes (donut), cash flow,
+  spending by category, and a net-worth trend. **Drag to reorder** cards, and
+  switch the cash-flow and spending charts between chart types.
 - **Spending Calendar** — a month view of daily net cash flow; tap a day for its
   income, spending, and transactions.
+- **Light & dark** — a cohesive, water-inspired theme throughout.
 
 ## How it works
 
