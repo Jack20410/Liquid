@@ -29,6 +29,10 @@ final class VoiceCapture {
     private(set) var state: State = .idle
     private(set) var transcript = ""
 
+    /// Text from segments the recognizer has already finalized (across pauses). The
+    /// live `transcript` is this plus the current in-progress segment.
+    private var finalizedText = ""
+
     private let recognizer = SFSpeechRecognizer(locale: .current)
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -109,12 +113,32 @@ final class VoiceCapture {
     }
 
     private func beginRecording() throws {
-        task?.cancel()
-        task = nil
+        finalizedText = ""
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
+
+        // The tap feeds the *current* request, so restarting the task mid-session
+        // (below) keeps capturing without re-tapping the engine.
+        let input = audioEngine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            self?.request?.append(buffer)
+        }
+        audioEngine.prepare()
+        try audioEngine.start()
+
+        installTask()
+    }
+
+    /// Start (or restart) a recognition task on the already-running audio engine.
+    /// SFSpeechRecognizer finalizes a segment after a ~few-second pause; rather than
+    /// ending there, we bank the finalized text and start a fresh task — so a pause
+    /// never wipes what was already said. Capture ends when the user taps Add
+    /// (`stop()`), not when the recognizer decides the utterance is over.
+    private func installTask() {
+        task?.cancel()
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -123,24 +147,32 @@ final class VoiceCapture {
         }
         self.request = request
 
-        let input = audioEngine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak request] buffer, _ in
-            request?.append(buffer)
-        }
-        audioEngine.prepare()
-        try audioEngine.start()
-
         task = recognizer?.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let result {
-                    self.transcript = result.bestTranscription.formattedString
-                    if result.isFinal { self.finalize() }
+                    self.transcript = self.combined(result.bestTranscription.formattedString)
+                    if result.isFinal {
+                        self.finalizedText = self.transcript
+                        switch self.state {
+                        case .recording: self.installTask()   // pause — keep listening
+                        case .finishing: self.finalize()       // user stopped — we're done
+                        default: break
+                        }
+                    }
                 } else if error != nil {
-                    self.finalize()
+                    // Only wrap up on a user-initiated stop; ignore transient errors
+                    // while still recording (the next task recovers).
+                    if self.state == .finishing { self.finalize() }
                 }
             }
         }
+    }
+
+    /// Finalized text so far plus the current in-progress segment.
+    private func combined(_ segment: String) -> String {
+        if finalizedText.isEmpty { return segment }
+        if segment.isEmpty { return finalizedText }
+        return finalizedText + " " + segment
     }
 }
