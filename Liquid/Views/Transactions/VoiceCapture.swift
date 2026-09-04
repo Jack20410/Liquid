@@ -21,7 +21,8 @@ final class VoiceCapture {
         case idle
         case denied        // microphone or speech permission refused
         case recording
-        case finished      // stopped, `transcript` holds the result
+        case finishing     // stopped capturing; awaiting the recognizer's final result
+        case finished      // done — `transcript` holds the final result
         case failed
     }
 
@@ -51,18 +52,51 @@ final class VoiceCapture {
         }
     }
 
-    /// Stop listening; the recognizer finalises and `state` becomes `.finished`.
+    /// Stop capturing and ask the recognizer for its final result. `state` becomes
+    /// `.finishing`, then `.finished` once the final transcript arrives via the
+    /// recognition callback (or a short timeout elapses) — so callers parse the
+    /// complete transcript, not whatever partial happened to be showing.
     func stop() {
         guard state == .recording else { return }
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
-        request?.endAudio()
-        task?.finish()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        state = .finished
+        request?.endAudio()          // no more audio; the recognizer will emit a final result
+        state = .finishing
+        // Don't wait forever for the final callback.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard let self, self.state == .finishing else { return }
+            self.finalize()
+        }
+    }
+
+    /// Abandon capture immediately (e.g. the sheet was cancelled) and release the mic.
+    func cancel() {
+        task?.cancel()
+        teardown()
+        state = .idle
     }
 
     // MARK: Internals
+
+    /// Publish the transcript we have and release resources. Idempotent — once
+    /// `.finished`, later calls (a late final result, or the timeout) are no-ops.
+    private func finalize() {
+        guard state == .recording || state == .finishing else { return }
+        teardown()
+        state = .finished
+    }
+
+    /// Stop the engine/session and release the recognition task and request.
+    private func teardown() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        request = nil
+        task = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
 
     private func requestPermissions() async -> Bool {
         let speech = await withCheckedContinuation { cont in
@@ -102,9 +136,9 @@ final class VoiceCapture {
                 guard let self else { return }
                 if let result {
                     self.transcript = result.bestTranscription.formattedString
-                    if result.isFinal { self.stop() }
+                    if result.isFinal { self.finalize() }
                 } else if error != nil {
-                    self.stop()
+                    self.finalize()
                 }
             }
         }

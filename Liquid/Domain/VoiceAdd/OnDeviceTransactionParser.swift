@@ -24,7 +24,8 @@ struct ParsedTransaction {
            .anyOf(["expense", "income"]))
     var kind: String
 
-    @Guide(description: "The amount of money, as a positive number.", .minimum(Decimal(0)))
+    @Guide(description: "The amount of money as a number; use 0 if the sentence doesn't state an amount.",
+           .minimum(Decimal(0)))
     var amount: Decimal
 
     @Guide(description: "How many days before today it happened: 0 today, 1 yesterday.",

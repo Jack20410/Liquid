@@ -38,7 +38,7 @@ struct VoiceAddView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { capture.stop(); dismiss() }
+                    Button("Cancel") { capture.cancel(); dismiss() }
                 }
             }
             .task { if capture.state == .idle { await capture.start() } }
@@ -50,7 +50,7 @@ struct VoiceAddView: View {
 
     @ViewBuilder
     private var content: some View {
-        if isParsing {
+        if isParsing || capture.state == .finishing {
             parsingView
         } else if let parseError {
             messageView(parseError)
