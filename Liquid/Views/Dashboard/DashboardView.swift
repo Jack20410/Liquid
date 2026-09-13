@@ -103,6 +103,10 @@ struct DashboardView: View {
             if !envelopes.isEmpty {
                 SafeToSpendCard(envelopes: envelopes) { selectedTab = .envelopes }
             }
+        case .insights:
+            if !transactions.isEmpty {
+                InsightsCard(transactions: transactions, envelopes: envelopes, accounts: accounts)
+            }
         case .accounts:
             if !accounts.isEmpty {
                 AccountsCard(accounts: accounts) { selectedTab = .accounts }
