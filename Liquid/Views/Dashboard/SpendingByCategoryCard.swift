@@ -105,14 +105,7 @@ struct SpendingByCategoryCard: View {
                             .font(.subheadline)
                             .frame(width: 80, alignment: .leading)
                             .lineLimit(1)
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Color(.tertiarySystemFill))
-                                Capsule().fill(item.color)
-                                    .frame(width: max(6, geo.size.width * fraction(item.amount, maxAmount)))
-                            }
-                        }
-                        .frame(height: 14)
+                        BudgetBar(fraction: fraction(item.amount, maxAmount), color: item.color, height: 14)
                         Text(item.amount.asCurrency)
                             .font(.caption)
                             .monospacedDigit()
@@ -128,21 +121,15 @@ struct SpendingByCategoryCard: View {
 
     private var donutView: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Chart(items) { item in
-                    SectorMark(angle: .value("Spent", item.amount.asDouble),
-                               innerRadius: .ratio(0.62),
-                               angularInset: 1.5)
-                    .cornerRadius(4)
-                    .foregroundStyle(item.color)
-                }
-                .frame(height: 170)
-
+            MiniDonut(slices: items.map {
+                DonutSlice(id: $0.id, amount: $0.amount.asDouble, color: $0.color)
+            }) {
                 VStack(spacing: 1) {
                     Text("total").font(.caption2).foregroundStyle(.secondary)
                     Text(total.asCurrency).font(.callout.weight(.semibold)).monospacedDigit()
                 }
             }
+            .frame(height: 170)
 
             VStack(spacing: 8) {
                 ForEach(items) { item in
