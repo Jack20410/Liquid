@@ -42,15 +42,15 @@ enum CashFlowChartStyle: String, CaseIterable, Identifiable, ChartStyleOption {
 /// bottom: this is a money-tracking app, not an investing app, so the budget
 /// cards lead and the trend is context.
 enum DashboardCardID: String, CaseIterable, Identifiable {
-    case toBeBudgeted, safeToSpend, insights, accounts, envelopes, cashFlow, spending, netWorth
+    case budgetRing, insights, recentTransactions, accounts, envelopes, cashFlow, spending, netWorth
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .toBeBudgeted: "To Be Budgeted"
-        case .safeToSpend: "Safe to Spend"
+        case .budgetRing: "Budget"
         case .insights: "Insights"
+        case .recentTransactions: "Recent Transactions"
         case .accounts: "Accounts"
         case .envelopes: "Envelopes"
         case .cashFlow: "Cash flow"
@@ -61,9 +61,9 @@ enum DashboardCardID: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .toBeBudgeted: "tray.and.arrow.down"
-        case .safeToSpend: "dollarsign.circle"
+        case .budgetRing: "gauge.with.needle"
         case .insights: "sparkles"
+        case .recentTransactions: "list.bullet.rectangle"
         case .accounts: "building.columns"
         case .envelopes: "tray.full"
         case .cashFlow: "chart.bar.xaxis"
@@ -73,7 +73,7 @@ enum DashboardCardID: String, CaseIterable, Identifiable {
     }
 
     static let defaultOrder: [DashboardCardID] = [
-        .toBeBudgeted, .safeToSpend, .insights, .accounts, .envelopes, .cashFlow, .spending, .netWorth,
+        .budgetRing, .insights, .recentTransactions, .cashFlow, .spending, .netWorth, .accounts, .envelopes,
     ]
 
     /// Parse a stored order string, dropping unknown entries and appending any

@@ -114,6 +114,24 @@ enum BudgetMath {
         return min(1, max(0, ratio.doubleValue))
     }
 
+    // MARK: Envelope activity over a period
+
+    /// Total spent (expenses) from this envelope within `interval` — used for the
+    /// spend-vs-budget bars on the Envelopes screen.
+    static func envelopeSpend(_ envelope: Envelope, in interval: DateInterval) -> Decimal {
+        envelope.transactions
+            .filter { $0.type == .expense && interval.contains($0.date) }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Total allocated into this envelope within `interval` — the period's budget
+    /// baseline (what the envelope was funded with this month).
+    static func envelopeAllocated(_ envelope: Envelope, in interval: DateInterval) -> Decimal {
+        envelope.transactions
+            .filter { $0.type == .allocation && interval.contains($0.date) }
+            .reduce(0) { $0 + $1.amount }
+    }
+
     // MARK: To Be Budgeted
 
     /// Income that has arrived but has not yet been allocated to any envelope
@@ -126,6 +144,27 @@ enum BudgetMath {
             case .expense, .transfer: sum
             }
         }
+    }
+
+    // MARK: Savings rate
+
+    /// Share of income kept rather than spent over `interval`: (income − spending)
+    /// ÷ income. Nil when there was no income in the period (nothing to measure
+    /// against). May be negative when spending outran income — callers clamp to
+    /// 0...1 for a gauge but keep the raw value for the headline number.
+    /// Allocations and transfers are internal moves and never count.
+    static func savingsRate(_ transactions: [Transaction], in interval: DateInterval) -> Double? {
+        var income: Decimal = 0
+        var spending: Decimal = 0
+        for tx in transactions where interval.contains(tx.date) {
+            switch tx.type {
+            case .income: income += tx.amount
+            case .expense: spending += tx.amount
+            case .allocation, .transfer: break
+            }
+        }
+        guard income > 0 else { return nil }
+        return ((income - spending) / income).asDouble
     }
 
     // MARK: Net worth over time

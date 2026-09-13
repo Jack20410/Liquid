@@ -1,17 +1,17 @@
 //
-//  InsightsCard.swift
+//  InsightsDetailView.swift
 //  Liquid
 //
-//  "Insights": a plain-language read on the user's money. The facts come from
-//  InsightsEngine and are always shown as deterministic sentences, so the card
-//  works everywhere. When Apple's on-device model is available it rephrases those
-//  sentences into a short narrative (badged "On-device AI"); if it isn't, or if
-//  the narration fails the grounding check, the sentences stay as they are.
+//  The fuller, narrated read behind the dashboard's Insights tiles. The visual grid
+//  is the glance; this is the detail: an on-device AI summary (when available) over
+//  the deterministic list of grounded facts. The facts come from InsightsEngine and
+//  are always shown as sentences, so the screen works everywhere; the on-device
+//  model only rephrases them (badged "On-device AI") and never invents a number.
 //
 
 import SwiftUI
 
-struct InsightsCard: View {
+struct InsightsDetailView: View {
     let transactions: [Transaction]
     let envelopes: [Envelope]
     let accounts: [Account]
@@ -25,25 +25,29 @@ struct InsightsCard: View {
     private var sentences: [String] { insights.map(\.sentence) }
 
     var body: some View {
-        if !insights.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                CardHeader(title: "Insights") {
-                    if narration != nil { onDeviceBadge }
-                }
-
+        List {
+            if insights.isEmpty {
+                ContentUnavailableView("Nothing to report yet",
+                                       systemImage: "sparkles",
+                                       description: Text("Add a few transactions and your money's story will show up here."))
+            } else {
                 if let narration {
-                    Text(narration)
-                        .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(insights, id: \.self) { row($0) }
+                    Section {
+                        Text(narration)
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } header: {
+                        onDeviceBadge
                     }
                 }
+                Section("Details") {
+                    ForEach(insights, id: \.self) { row($0) }
+                }
             }
-            .dashboardCard()
-            .task(id: sentences) { await narrate() }
         }
+        .navigationTitle("Insights")
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: sentences) { await narrate() }
     }
 
     private func row(_ insight: Insight) -> some View {
@@ -64,6 +68,7 @@ struct InsightsCard: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(Color.accentColor.opacity(0.12), in: .capsule)
+            .textCase(nil)
     }
 
     /// Ask the on-device model to rephrase the facts; keep the sentences on any
@@ -75,7 +80,7 @@ struct InsightsCard: View {
     }
 }
 
-// MARK: - Presentation
+// MARK: - Insight presentation
 
 extension Insight {
     /// The deterministic sentence for this fact — the grounding the narrator must

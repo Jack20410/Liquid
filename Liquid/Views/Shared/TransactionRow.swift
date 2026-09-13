@@ -12,6 +12,30 @@ struct TransactionRow: View {
     let transaction: Transaction
     /// Hide the envelope name when the list is already scoped to one envelope.
     var showsEnvelope: Bool = true
+    /// Hide the date when the list is already grouped by day.
+    var showsDate: Bool = true
+    /// Category color for the leading badge; when nil, a sensible color is derived
+    /// from the transaction's type/envelope.
+    var categoryColor: Color?
+
+    private var badgeColor: Color {
+        categoryColor ?? CategoryStyle.color(for: transaction, categoryColors: [:])
+    }
+
+    /// The metadata line, composed so it never starts with a stray separator.
+    private var metadata: String {
+        var parts: [String] = []
+        if showsDate {
+            parts.append(transaction.date.formatted(.dateTime.month().day().year()))
+        }
+        if transaction.type == .transfer {
+            parts.append("\(transaction.account?.name ?? "?") → \(transaction.toAccount?.name ?? "?")")
+        } else {
+            if showsEnvelope, let envelope = transaction.envelope { parts.append(envelope.name) }
+            if let account = transaction.account { parts.append(account.name) }
+        }
+        return parts.joined(separator: " · ")
+    }
 
     private var signedColor: Color {
         switch transaction.type {
@@ -31,25 +55,15 @@ struct TransactionRow: View {
     }
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            CategoryBadge(systemImage: CategoryStyle.icon(for: transaction), color: badgeColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.note.isEmpty ? transaction.type.displayName : transaction.note)
-                HStack(spacing: 6) {
-                    Text(transaction.date, format: .dateTime.month().day().year())
-                    if transaction.type == .transfer {
-                        // For a transfer, show the route rather than a single account.
-                        Text("· \(transaction.account?.name ?? "?") → \(transaction.toAccount?.name ?? "?")")
-                    } else {
-                        if showsEnvelope, let envelope = transaction.envelope {
-                            Text("· \(envelope.name)")
-                        }
-                        if let account = transaction.account {
-                            Text("· \(account.name)")
-                        }
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(metadata)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer()
             Text(amountText)

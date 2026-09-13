@@ -28,6 +28,7 @@ struct DashboardView: View {
 
     @State private var showingCalendar = false
     @State private var showingSettings = false
+    @State private var selectedMonth: Date = DashboardView.startOfMonth(.now)
     @AppStorage(ChartStyleKey.cardOrder) private var cardOrderRaw = DashboardCardID.rawValue(for: DashboardCardID.defaultOrder)
 
     private var isEmpty: Bool {
@@ -36,6 +37,28 @@ struct DashboardView: View {
 
     private var cardOrder: [DashboardCardID] {
         DashboardCardID.order(from: cardOrderRaw)
+    }
+
+    private static func startOfMonth(_ date: Date, calendar: Calendar = .current) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    /// The last 12 months, newest first, for the month picker.
+    private var monthOptions: [Date] {
+        let calendar = Calendar.current
+        let thisMonth = Self.startOfMonth(.now, calendar: calendar)
+        return (0..<12).compactMap { calendar.date(byAdding: .month, value: -$0, to: thisMonth) }
+    }
+
+    /// The reference point used to scope the insight tiles: "now" for the current
+    /// month, otherwise the last day of the selected month.
+    private var monthAsOf: Date {
+        let calendar = Calendar.current
+        let thisMonth = Self.startOfMonth(.now, calendar: calendar)
+        if calendar.isDate(selectedMonth, equalTo: thisMonth, toGranularity: .month) { return .now }
+        if let next = calendar.date(byAdding: .month, value: 1, to: selectedMonth),
+           let end = calendar.date(byAdding: .day, value: -1, to: next) { return end }
+        return selectedMonth
     }
 
     var body: some View {
@@ -65,6 +88,9 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    monthMenu
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingCalendar = true
                     } label: {
@@ -90,22 +116,51 @@ struct DashboardView: View {
         }
     }
 
+    /// The month picker shown in the navigation bar; scopes the insight tiles.
+    private var monthMenu: some View {
+        Menu {
+            ForEach(monthOptions, id: \.self) { month in
+                Button {
+                    selectedMonth = month
+                } label: {
+                    if Calendar.current.isDate(month, equalTo: selectedMonth, toGranularity: .month) {
+                        Label(month.formatted(.dateTime.month(.wide).year()), systemImage: "checkmark")
+                    } else {
+                        Text(month.formatted(.dateTime.month(.wide).year()))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selectedMonth.formatted(.dateTime.month(.wide).year()))
+                    .font(.headline)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(.primary)
+        }
+        .accessibilityLabel("Selected month")
+    }
+
     /// Render one dashboard card by id, in the user's chosen order. Cards with
     /// nothing to show are skipped.
     @ViewBuilder
     private func dashboardCard(_ card: DashboardCardID) -> some View {
         switch card {
-        case .toBeBudgeted:
-            ToBeBudgetedCard(amount: BudgetMath.toBeBudgeted(transactions: transactions)) {
-                selectedTab = .distribute
-            }
-        case .safeToSpend:
+        case .budgetRing:
             if !envelopes.isEmpty {
-                SafeToSpendCard(envelopes: envelopes) { selectedTab = .envelopes }
+                BudgetRingCard(envelopes: envelopes, transactions: transactions) {
+                    selectedTab = .distribute
+                }
             }
         case .insights:
             if !transactions.isEmpty {
-                InsightsCard(transactions: transactions, envelopes: envelopes, accounts: accounts)
+                InsightsGridCard(transactions: transactions, envelopes: envelopes,
+                                 accounts: accounts, month: monthAsOf)
+            }
+        case .recentTransactions:
+            if !transactions.isEmpty {
+                RecentTransactionsCard(transactions: transactions) { selectedTab = .transactions }
             }
         case .accounts:
             if !accounts.isEmpty {
@@ -122,135 +177,6 @@ struct DashboardView: View {
         case .netWorth:
             NetWorthTrendCard(transactions: transactions)
         }
-    }
-}
-
-// MARK: - To Be Budgeted (hero tile)
-
-private struct ToBeBudgetedCard: View {
-    let amount: Decimal
-    var onDistribute: (() -> Void)?
-
-    private var statusColor: Color {
-        if amount > 0 { Color.increase }
-        else if amount < 0 { Color.decrease }
-        else { .secondary }
-    }
-
-    private var caption: String {
-        if amount > 0 { "Income waiting for a job — distribute it into envelopes." }
-        else if amount < 0 { "Envelopes claim more than your income. Review allocations." }
-        else { "Every dollar has a job. Nicely done." }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("To Be Budgeted")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(amount.asCurrency)
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(statusColor)
-                .contentTransition(.numericText())
-            Text(caption)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            if amount > 0, let onDistribute {
-                Button(action: onDistribute) {
-                    Label("Distribute", systemImage: "arrow.branch")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 4)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("To Be Budgeted: \(amount.asCurrency)")
-    }
-}
-
-// MARK: - Safe to Spend (hero tile)
-
-private struct SafeToSpendCard: View {
-    let envelopes: [Envelope]
-    var onOpen: (() -> Void)?
-
-    /// Spending envelopes, richest first — the ones that make up the number.
-    private var spending: [Envelope] {
-        envelopes
-            .filter { $0.kind.isSafeToSpend }
-            .sorted { BudgetMath.envelopeBalance($0) > BudgetMath.envelopeBalance($1) }
-    }
-
-    private var amount: Decimal { BudgetMath.safeToSpend(envelopes) }
-    private var shown: [Envelope] { Array(spending.prefix(4)) }
-
-    private var statusColor: Color {
-        if amount > 0 { Color.increase } else if amount < 0 { Color.decrease } else { .secondary }
-    }
-
-    private var caption: String {
-        if spending.isEmpty { "Tag an envelope as Spending to track what's safe to spend." }
-        else if amount > 0 { "What's left in your spending envelopes, after bills and goals." }
-        else if amount < 0 { "You've overspent your spending envelopes." }
-        else { "Your spending envelopes are empty." }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Safe to Spend")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(amount.asCurrency)
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(statusColor)
-                .contentTransition(.numericText())
-            Text(caption)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            if !shown.isEmpty {
-                Divider().padding(.vertical, 4)
-                VStack(spacing: 8) {
-                    ForEach(shown) { env in
-                        let balance = BudgetMath.envelopeBalance(env)
-                        HStack {
-                            Image(systemName: env.kind.icon)
-                                .font(.caption).foregroundStyle(.secondary).frame(width: 18)
-                            Text(env.name).font(.subheadline)
-                            Spacer()
-                            Text(balance.asCurrency)
-                                .font(.subheadline).monospacedDigit()
-                                .foregroundStyle(balance < 0 ? Color.decrease : .primary)
-                        }
-                    }
-                }
-                if let onOpen {
-                    Button(action: onOpen) {
-                        HStack(spacing: 4) {
-                            Text(spending.count > shown.count
-                                 ? "See all \(spending.count) envelopes" : "See envelopes")
-                            Image(systemName: "chevron.right")
-                                .font(.caption2.weight(.semibold))
-                        }
-                        .font(.footnote.weight(.semibold))
-                    }
-                    .padding(.top, 2)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Safe to Spend: \(amount.asCurrency)")
     }
 }
 
@@ -407,19 +333,15 @@ private struct EnvelopesCard: View {
         let positive = shown.filter { $0.balance > 0 }
         let total = positive.reduce(Decimal(0)) { $0 + $1.balance }
         return VStack(spacing: 12) {
-            ZStack {
-                Chart(positive) { item in
-                    SectorMark(angle: .value("Balance", item.balance.asDouble),
-                               innerRadius: .ratio(0.62), angularInset: 1.5)
-                    .cornerRadius(4)
-                    .foregroundStyle(item.color)
-                }
-                .frame(height: 160)
+            MiniDonut(slices: positive.map {
+                DonutSlice(id: $0.id.uuidString, amount: $0.balance.asDouble, color: $0.color)
+            }) {
                 VStack(spacing: 1) {
                     Text("budgeted").font(.caption2).foregroundStyle(.secondary)
                     Text(total.asCurrency).font(.callout.weight(.semibold)).monospacedDigit()
                 }
             }
+            .frame(height: 160)
             VStack(spacing: 8) {
                 ForEach(shown) { item in
                     NavigationLink {
