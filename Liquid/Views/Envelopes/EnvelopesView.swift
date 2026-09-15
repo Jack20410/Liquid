@@ -175,7 +175,7 @@ private struct EnvelopeRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CategoryBadge(systemImage: envelope.kind.icon, color: color)
+            CategoryBadge(systemImage: CategoryStyle.icon(for: envelope), color: color)
             if envelope.kind == .goal {
                 goalContent
             } else {

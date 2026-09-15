@@ -97,7 +97,7 @@ struct InsightsGridCard: View {
         let total = top.slices.reduce(Decimal(0)) { $0 + $1.amount } + top.other
         var wedges = top.slices.enumerated().map { index, slice in
             DonutSlice(id: slice.id, amount: slice.amount.asDouble,
-                       color: Self.palette[index % Self.palette.count])
+                       color: color(forSliceID: slice.id, fallbackIndex: index))
         }
         if top.other > 0 {
             wedges.append(DonutSlice(id: "other", amount: top.other.asDouble, color: .gray))
@@ -115,7 +115,7 @@ struct InsightsGridCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(Array(named.enumerated()), id: \.element.id) { index, slice in
                     legendRow(name: slice.name,
-                              color: Self.palette[index % Self.palette.count],
+                              color: color(forSliceID: slice.id, fallbackIndex: index),
                               share: share(slice.amount, of: total))
                 }
                 if remainder > 0, moreCount > 0 {
@@ -142,6 +142,14 @@ struct InsightsGridCard: View {
                 .foregroundStyle(.secondary)
         }
         .font(.system(size: 10))
+    }
+
+    /// A slice is identified by its envelope's UUID string, so a category the user
+    /// gave a color keeps that color here instead of taking the next palette entry.
+    private func color(forSliceID id: String, fallbackIndex: Int) -> Color {
+        let envelope = envelopes.first { $0.id.uuidString == id }
+        return envelope.flatMap { CategoryStyle.customColor(for: $0) }
+            ?? Self.palette[fallbackIndex % Self.palette.count]
     }
 
     private func share(_ amount: Decimal, of total: Decimal) -> Int {
