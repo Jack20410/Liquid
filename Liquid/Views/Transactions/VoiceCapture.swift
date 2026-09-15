@@ -29,6 +29,18 @@ final class VoiceCapture {
     private(set) var state: State = .idle
     private(set) var transcript = ""
 
+    /// A rolling window of recent microphone levels (0…1, oldest first) for the
+    /// waveform. Kept short — it is a picture of the last second or so, not data.
+    private(set) var levels: [Double] = Array(repeating: 0, count: VoiceCapture.levelWindow)
+
+    static let levelWindow = 26
+
+    private let meter = VoiceLevelMeter()
+    /// The tap fires ~86×/s; the wave only needs ~20. Buffers in between still
+    /// reach the recognizer, they just don't each push a UI update.
+    private var lastLevelUpdate = Date.distantPast
+    private static let levelInterval: TimeInterval = 1.0 / 20
+
     /// Text from segments the recognizer has already finalized (across pauses). The
     /// live `transcript` is this plus the current in-progress segment.
     private var finalizedText = ""
@@ -44,6 +56,7 @@ final class VoiceCapture {
     /// Ask for microphone + speech permission and begin listening.
     func start() async {
         transcript = ""
+        clearLevels()
         guard await requestPermissions() else {
             state = .denied
             return
@@ -65,6 +78,7 @@ final class VoiceCapture {
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         request?.endAudio()          // no more audio; the recognizer will emit a final result
+        clearLevels()
         state = .finishing
         // Don't wait forever for the final callback.
         Task { @MainActor [weak self] in
@@ -79,6 +93,33 @@ final class VoiceCapture {
         task?.cancel()
         teardown()
         state = .idle
+    }
+
+    // MARK: Levels
+
+    /// The first channel's samples, copied out of the buffer so nothing crosses
+    /// threads but plain values.
+    private nonisolated static func monoSamples(from buffer: AVAudioPCMBuffer) -> [Float]? {
+        guard let channel = buffer.floatChannelData?[0] else { return nil }
+        return Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
+    }
+
+    /// Append one smoothed level to the rolling window, at the wave's frame rate.
+    private func record(_ samples: [Float]) {
+        guard state == .recording else { return }
+        let now = Date.now
+        guard now.timeIntervalSince(lastLevelUpdate) >= Self.levelInterval else { return }
+        lastLevelUpdate = now
+
+        let level = meter.smoothed(meter.level(for: samples), previous: levels.last ?? 0)
+        levels.removeFirst()
+        levels.append(level)
+    }
+
+    /// Fade the wave back to rest — used when capture stops, so the bars settle
+    /// instead of freezing mid-sentence.
+    private func clearLevels() {
+        levels = Array(repeating: 0, count: Self.levelWindow)
     }
 
     // MARK: Internals
@@ -125,6 +166,10 @@ final class VoiceCapture {
         let format = input.outputFormat(forBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             self?.request?.append(buffer)
+            // The tap runs on an audio thread: read the samples here, but hand the
+            // level to the main actor for the wave to draw.
+            guard let samples = Self.monoSamples(from: buffer) else { return }
+            Task { @MainActor [weak self] in self?.record(samples) }
         }
         audioEngine.prepare()
         try audioEngine.start()

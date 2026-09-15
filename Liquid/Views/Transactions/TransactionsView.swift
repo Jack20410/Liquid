@@ -23,6 +23,8 @@ struct TransactionsView: View {
 
     // Natural-language "Say it" capture: speak → draft → pre-filled editor.
     @State private var showVoiceAdd = false
+    @Namespace private var voiceNamespace
+    private static let voiceTransition = "voice-capture"
     @State private var pendingDraft: TransactionDraft?
     @State private var showDraftEditor = false
 
@@ -107,6 +109,7 @@ struct TransactionsView: View {
                     if OnDeviceTransactionParser.isAvailable {
                         Button("Say it", systemImage: "mic.fill") { showVoiceAdd = true }
                             .disabled(accounts.isEmpty)
+                            .matchedTransitionSource(id: Self.voiceTransition, in: voiceNamespace)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -121,15 +124,20 @@ struct TransactionsView: View {
             .sheet(isPresented: $showFilters) {
                 TransactionFilterView(filter: $filter, envelopes: envelopes, accounts: accounts)
             }
-            // Dismiss the voice sheet first, then open the editor from onDismiss so
-            // the two sheets don't compete in the same runloop.
-            .sheet(isPresented: $showVoiceAdd, onDismiss: {
+            // Voice capture covers the screen with a clear background, so the app
+            // stays visible and blurred behind it rather than a card sliding up.
+            // Dismiss it first, then open the editor from onDismiss so the two
+            // presentations don't compete in the same runloop.
+            .fullScreenCover(isPresented: $showVoiceAdd, onDismiss: {
                 if pendingDraft != nil { showDraftEditor = true }
             }) {
                 VoiceAddView(catalog: parseCatalog) { draft in
                     pendingDraft = draft
                     showVoiceAdd = false
                 }
+                // Grow out of the microphone button rather than sliding up from
+                // the bottom: the screen should feel like it came from the mic.
+                .navigationTransition(.zoom(sourceID: Self.voiceTransition, in: voiceNamespace))
             }
             .sheet(isPresented: $showDraftEditor, onDismiss: { pendingDraft = nil }) {
                 if let draft = pendingDraft {
