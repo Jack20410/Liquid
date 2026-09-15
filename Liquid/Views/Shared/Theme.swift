@@ -31,6 +31,14 @@ extension Color {
 
     // MARK: Building block
 
+    /// A color from a stored `"RRGGBB"` string (how envelopes persist their color).
+    /// Returns nil for anything that isn't six hex digits.
+    init?(hexString: String) {
+        let trimmed = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
+        guard trimmed.count == 6, let value = UInt(trimmed, radix: 16) else { return nil }
+        self.init(hex: value)
+    }
+
     /// A color from a 24-bit `0xRRGGBB` hex literal.
     init(hex: UInt) {
         self.init(
@@ -61,14 +69,29 @@ extension Color {
     /// Distinct fills for charts (donut slices, the Sankey ribbons, category
     /// bars) — a natural, aquatic spectrum. Deliberately excludes the semantic
     /// sea-green/coral so a category fill never reads as income or expense.
-    static let categoryPalette: [Color] = [
-        .deepTeal,             // 0E7490  deep teal (ocean)
-        Color(hex: 0xE0A94F),  //         sand / shore
-        .aqua,                 // 22C3D6  lagoon aqua
-        Color(hex: 0x1D4E89),  //         deep sea blue
-        .seafoam,              // 2F9E7E  sea green
-        Color(hex: 0x8FB55A),  //         reed green
-        Color(hex: 0x7FCFE0),  //         shallow aqua
-        Color(hex: 0x155E63),  //         kelp (deep)
+    ///
+    /// Order matters: consumers walk this array by index, so neighbours must
+    /// differ in *hue family and lightness*. A donut of five slices was reading as
+    /// "three blues" when deep teal, aqua, and deep-sea blue landed within four
+    /// steps of each other, so the sequence alternates cool → warm → green → navy
+    /// rather than grouping the blues together.
+    /// The palette's raw values, so a picker can persist the exact color it shows
+    /// (envelopes store `"RRGGBB"`, never an index into this array).
+    static let categoryPaletteHex: [UInt] = [
+        0x0E7490,   // deep teal (ocean)
+        0xE0A94F,   // sand / shore
+        0x2F9E7E,   // sea green
+        0x1D4E89,   // deep sea blue
+        0x8FB55A,   // reed green
+        0x22C3D6,   // lagoon aqua
+        0x155E63,   // kelp (deep)
+        0x7FCFE0,   // shallow aqua
     ]
+
+    static let categoryPalette: [Color] = categoryPaletteHex.map { Color(hex: $0) }
+
+    /// The palette in the form envelopes store, for the color picker.
+    static let categoryPaletteHexStrings: [String] = categoryPaletteHex.map {
+        String(format: "%06X", $0)
+    }
 }

@@ -12,6 +12,9 @@ import SwiftUI
 struct MiniBars: View {
     var values: [Double]
     var tint: Color = .accentColor
+    /// One color per bar, when the bars stand for named things (a bill each) and
+    /// should match a legend elsewhere. Falls back to `tint` where it runs out.
+    var colors: [Color] = []
     var spacing: CGFloat = 4
 
     /// Widest a single bar may get, so a tile with only a couple of values shows
@@ -25,9 +28,9 @@ struct MiniBars: View {
             let fitted = (geo.size.width - spacing * CGFloat(count - 1)) / CGFloat(count)
             let barWidth = max(4, min(maxBarWidth, fitted))
             HStack(alignment: .bottom, spacing: spacing) {
-                ForEach(Array(values.enumerated()), id: \.offset) { _, value in
+                ForEach(Array(values.enumerated()), id: \.offset) { index, value in
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(tint)
+                        .fill(index < colors.count ? colors[index] : tint)
                         .frame(width: barWidth,
                                height: barHeight(value, maxValue: maxValue, in: geo.size.height))
                 }
