@@ -148,12 +148,11 @@ enum BudgetMath {
 
     // MARK: Savings rate
 
-    /// Share of income kept rather than spent over `interval`: (income − spending)
-    /// ÷ income. Nil when there was no income in the period (nothing to measure
-    /// against). May be negative when spending outran income — callers clamp to
-    /// 0...1 for a gauge but keep the raw value for the headline number.
-    /// Allocations and transfers are internal moves and never count.
-    static func savingsRate(_ transactions: [Transaction], in interval: DateInterval) -> Double? {
+    /// Money in and money out over `interval`. Allocations and transfers are
+    /// internal moves between the user's own envelopes and accounts, so neither
+    /// counts as income or spending.
+    static func incomeAndSpending(_ transactions: [Transaction],
+                                  in interval: DateInterval) -> (income: Decimal, spending: Decimal) {
         var income: Decimal = 0
         var spending: Decimal = 0
         for tx in transactions where interval.contains(tx.date) {
@@ -163,6 +162,15 @@ enum BudgetMath {
             case .allocation, .transfer: break
             }
         }
+        return (income, spending)
+    }
+
+    /// Share of income kept rather than spent over `interval`: (income − spending)
+    /// ÷ income. Nil when there was no income in the period (nothing to measure
+    /// against). May be negative when spending outran income — callers clamp to
+    /// 0...1 for a gauge but keep the raw value for the headline number.
+    static func savingsRate(_ transactions: [Transaction], in interval: DateInterval) -> Double? {
+        let (income, spending) = incomeAndSpending(transactions, in: interval)
         guard income > 0 else { return nil }
         return ((income - spending) / income).asDouble
     }

@@ -23,6 +23,8 @@ struct MonthlyInsights {
     struct SpendingTrend: Equatable {
         let percent: Int        // signed whole percent: +up, −down
         let series: [Double]    // cumulative spend, one point per elapsed day
+        let current: Decimal    // spent so far this month
+        let previous: Decimal   // spent by the same day last month
         var isUp: Bool { percent > 0 }
     }
 
@@ -32,6 +34,11 @@ struct MonthlyInsights {
         let amount: Decimal
         let share: Int          // whole percent of the month's spend
         let slices: [Slice]
+        /// Spend beyond the named slices, so the donut still adds up to the
+        /// month's real total. Zero when every category has its own slice.
+        let other: Decimal
+        /// How many categories the month's spending is spread across.
+        let categoryCount: Int
 
         struct Slice: Identifiable, Equatable {
             let id: String
@@ -56,6 +63,8 @@ struct MonthlyInsights {
     struct SavingRate: Equatable {
         let rate: Double        // raw (may be negative)
         let rating: SavingsRating
+        let income: Decimal     // money in, month to date
+        let kept: Decimal       // income − spending (may be negative)
     }
 
     let trend: SpendingTrend?
@@ -119,7 +128,8 @@ struct MonthlyInsights {
         var running: Decimal = 0
         let series = perDay.map { running += $0; return running.asDouble }
 
-        return SpendingTrend(percent: percent, series: series)
+        return SpendingTrend(percent: percent, series: series,
+                             current: monthTotal, previous: lastSamePoint)
     }
 
     // MARK: - Top spending
@@ -135,11 +145,16 @@ struct MonthlyInsights {
         let ranked = totals.sorted { $0.value > $1.value }
         guard let first = ranked.first else { return nil }
 
-        let slices = ranked.prefix(6).map {
+        let named = ranked.prefix(6)
+        let slices = named.map {
             TopSpending.Slice(id: $0.key.id.uuidString, name: $0.key.name, amount: $0.value)
         }
+        // Everything past the sixth category, kept as one remainder so the donut
+        // still represents the whole month rather than silently dropping spend.
+        let other = ranked.dropFirst(named.count).reduce(Decimal(0)) { $0 + $1.value }
         let share = Int(((first.value / monthTotal).asDouble * 100).rounded())
-        return TopSpending(category: first.key.name, amount: first.value, share: share, slices: Array(slices))
+        return TopSpending(category: first.key.name, amount: first.value, share: share,
+                           slices: Array(slices), other: other, categoryCount: ranked.count)
     }
 
     // MARK: - Planned (bill envelopes)
@@ -159,7 +174,9 @@ struct MonthlyInsights {
     private static func computeSavingRate(_ transactions: [Transaction], monthStart: Date, mtdEnd: Date) -> SavingRate? {
         let interval = DateInterval(start: monthStart, end: mtdEnd)
         guard let rate = BudgetMath.savingsRate(transactions, in: interval) else { return nil }
-        return SavingRate(rate: rate, rating: SavingsRating(rate: rate))
+        let (income, spending) = BudgetMath.incomeAndSpending(transactions, in: interval)
+        return SavingRate(rate: rate, rating: SavingsRating(rate: rate),
+                          income: income, kept: income - spending)
     }
 }
 

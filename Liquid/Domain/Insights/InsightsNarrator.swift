@@ -48,7 +48,7 @@ enum InsightsGrounding {
     /// missing magnitude is not.
     static func preservesNumbers(in narration: String, facts: [String]) -> Bool {
         let haystack = narration.replacingOccurrences(of: ",", with: "")
-        return facts.flatMap(numericTokens).allSatisfy { token in
+        return facts.flatMap { numericTokens($0) }.allSatisfy { token in
             let integerPart = token.split(separator: ".", maxSplits: 1).first.map(String.init) ?? token
             return haystack.contains(integerPart.replacingOccurrences(of: ",", with: ""))
         }

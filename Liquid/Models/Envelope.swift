@@ -51,6 +51,15 @@ final class Envelope: Identifiable {
     /// (older envelopes become `.spending`).
     var kind: EnvelopeKind = EnvelopeKind.spending
 
+    /// The user's chosen SF Symbol for this category. `nil` means "decide from the
+    /// name" — see `CategoryStyle.icon(for:)`.
+    var symbol: String?
+
+    /// The user's chosen color as `"RRGGBB"`. Stored as hex rather than a palette
+    /// index so reordering the palette never repaints saved envelopes; `nil` falls
+    /// back to the automatic per-list color assignment.
+    var colorHex: String?
+
     /// The allocation rule used at distribution time. Deleting an envelope
     /// deletes its rule (spec §9). The inverse (`AllocationRule.envelope`) is
     /// required for CloudKit sync.
@@ -68,6 +77,8 @@ final class Envelope: Identifiable {
         name: String,
         target: Decimal? = nil,
         kind: EnvelopeKind = .spending,
+        symbol: String? = nil,
+        colorHex: String? = nil,
         rule: AllocationRule? = nil,
         transactions: [Transaction] = []
     ) {
@@ -75,6 +86,8 @@ final class Envelope: Identifiable {
         self.name = name
         self.target = target
         self.kind = kind
+        self.symbol = symbol
+        self.colorHex = colorHex
         self.rule = rule
         self.transactions = transactions
     }
