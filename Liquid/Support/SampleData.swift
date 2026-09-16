@@ -24,6 +24,7 @@
 #if DEBUG
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Tiny deterministic generator (a linear-congruential sequence). A class so its
 /// methods need no `inout`, which keeps the seed helpers below readable.
@@ -77,25 +78,32 @@ enum SampleData {
 
         // MARK: Envelopes
 
+        /// A palette color by index, in the form envelopes store it.
+        func hex(_ index: Int) -> String {
+            let palette = Color.categoryPaletteHexStrings
+            return palette[index % palette.count]
+        }
+
         // Bills — full monthly amount as the allocation rule; funded in halves.
-        let gym = Envelope(name: "Gym", kind: .bill, rule: AllocationRule(strategy: .fixed(27), priority: 0))
-        let internet = Envelope(name: "Internet", kind: .bill, rule: AllocationRule(strategy: .fixed(40), priority: 1))
-        let claude = Envelope(name: "Claude", kind: .bill, rule: AllocationRule(strategy: .fixed(20), priority: 2))
-        let ytMusic = Envelope(name: "YouTube Music", kind: .bill, rule: AllocationRule(strategy: .fixed(10), priority: 3))
-        let mobile = Envelope(name: "Mobile", kind: .bill, rule: AllocationRule(strategy: .fixed(55), priority: 4))
+        let gym = Envelope(name: "Gym", kind: .bill, symbol: "figure.run", colorHex: hex(4), rule: AllocationRule(strategy: .fixed(27), priority: 0))
+        let internet = Envelope(name: "Internet", kind: .bill, symbol: "wifi", colorHex: hex(3), rule: AllocationRule(strategy: .fixed(40), priority: 1))
+        let claude = Envelope(name: "Claude", kind: .bill, symbol: "sparkles", colorHex: hex(6), rule: AllocationRule(strategy: .fixed(20), priority: 2))
+        let ytMusic = Envelope(name: "YouTube Music", kind: .bill, symbol: "music.note", colorHex: hex(7), rule: AllocationRule(strategy: .fixed(10), priority: 3))
+        let mobile = Envelope(name: "Mobile", kind: .bill, symbol: "iphone", colorHex: hex(0), rule: AllocationRule(strategy: .fixed(55), priority: 4))
 
         // Day-to-day spending — monthly budgets set above expected spend so the
         // envelopes stay positive (a healthy "safe to spend").
-        let coffee = Envelope(name: "Coffee", kind: .spending, rule: AllocationRule(strategy: .fixed(110), priority: 5))
-        let lunch = Envelope(name: "Lunch", kind: .spending, rule: AllocationRule(strategy: .fixed(110), priority: 6))
-        let groceries = Envelope(name: "Groceries", kind: .spending, rule: AllocationRule(strategy: .fixed(120), priority: 7))
-        let eatingOut = Envelope(name: "Eating Out", kind: .spending, rule: AllocationRule(strategy: .fixed(90), priority: 8))
-        let gas = Envelope(name: "Gas", kind: .spending, rule: AllocationRule(strategy: .fixed(120), priority: 9))
-        let clothes = Envelope(name: "Clothes", kind: .spending, rule: AllocationRule(strategy: .fixed(60), priority: 10))
-        let friends = Envelope(name: "Friends", kind: .spending, rule: AllocationRule(strategy: .fixed(160), priority: 11))
+        let coffee = Envelope(name: "Coffee", kind: .spending, symbol: "cup.and.saucer", colorHex: hex(1), rule: AllocationRule(strategy: .fixed(110), priority: 5))
+        let lunch = Envelope(name: "Lunch", kind: .spending, symbol: "fork.knife", colorHex: hex(2), rule: AllocationRule(strategy: .fixed(110), priority: 6))
+        let groceries = Envelope(name: "Groceries", kind: .spending, symbol: "cart", colorHex: hex(0), rule: AllocationRule(strategy: .fixed(120), priority: 7))
+        let eatingOut = Envelope(name: "Eating Out", kind: .spending, symbol: "takeoutbag.and.cup.and.straw", colorHex: hex(5), rule: AllocationRule(strategy: .fixed(90), priority: 8))
+        let gas = Envelope(name: "Gas", kind: .spending, symbol: "fuelpump", colorHex: hex(3), rule: AllocationRule(strategy: .fixed(120), priority: 9))
+        let clothes = Envelope(name: "Clothes", kind: .spending, symbol: "tshirt", colorHex: hex(1), rule: AllocationRule(strategy: .fixed(60), priority: 10))
+        let friends = Envelope(name: "Friends", kind: .spending, symbol: "person.2", colorHex: hex(4), rule: AllocationRule(strategy: .fixed(160), priority: 11))
 
         // Savings goal.
         let invest = Envelope(name: "Invest", target: 2000, kind: .goal,
+                              symbol: "banknote", colorHex: hex(2),
                               rule: AllocationRule(strategy: .fixed(100), priority: 12))
 
         let bills = [gym, internet, claude, ytMusic, mobile]

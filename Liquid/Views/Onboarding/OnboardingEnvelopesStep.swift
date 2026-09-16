@@ -123,7 +123,8 @@ struct OnboardingEnvelopesStep: View {
     private func add(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isAdded(trimmed) else { return }
-        repository.createEnvelope(name: trimmed, target: nil, kind: .spending)
+        repository.createEnvelope(name: trimmed, target: nil, kind: .spending,
+                                 symbol: CategoryIcon.suggestion(for: trimmed), colorHex: nil)
     }
 
     private func addCustom() {

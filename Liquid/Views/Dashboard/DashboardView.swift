@@ -303,7 +303,10 @@ private struct EnvelopesCard: View {
             .enumerated()
             .map { i, env in
                 Item(id: env.id, name: env.name, balance: BudgetMath.envelopeBalance(env),
-                     target: env.target, color: dashboardPalette[i % dashboardPalette.count], envelope: env)
+                     target: env.target,
+                     color: CategoryStyle.customColor(for: env)
+                         ?? dashboardPalette[i % dashboardPalette.count],
+                     envelope: env)
             }
     }
 

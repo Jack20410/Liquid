@@ -42,7 +42,9 @@ struct SpendingByCategoryCard: View {
         let ranked = totals.sorted { $0.value > $1.value }
         var result: [Item] = ranked.prefix(Self.topN).enumerated().map { i, pair in
             Item(id: pair.key.id.uuidString, name: pair.key.name, amount: pair.value,
-                 color: Self.palette[i % Self.palette.count], envelope: pair.key)
+                 color: CategoryStyle.customColor(for: pair.key)
+                         ?? Self.palette[i % Self.palette.count],
+                 envelope: pair.key)
         }
         let otherTotal = ranked.dropFirst(Self.topN).reduce(Decimal(0)) { $0 + $1.value }
         if otherTotal > 0 {

@@ -103,6 +103,9 @@ struct MonthlyInsightsTests {
         let trend = try #require(try compute(context).trend)
         #expect(trend.percent == 50)
         #expect(trend.isUp)
+        // The two figures the tile's caption compares.
+        #expect(trend.current == 150)
+        #expect(trend.previous == 100)
         // Cumulative series is monotonic and ends at the month-to-date total.
         #expect(trend.series.last == 150)
         #expect(trend.series == trend.series.sorted())
@@ -122,6 +125,27 @@ struct MonthlyInsightsTests {
         #expect(top.share == 75)              // 300 / 400
         #expect(top.slices.count == 2)
         #expect(top.slices.first?.name == "Groceries")
+        #expect(top.categoryCount == 2)
+        #expect(top.other == 0)               // every category got its own slice
+    }
+
+    @Test func topSpending_foldsCategoriesBeyondTheSixthIntoOther() throws {
+        let context = try makeContext()
+        // Eight categories spending 80, 70, 60, 50, 40, 30, 20, 10 → the last two
+        // (30 total) fall outside the six named slices.
+        for (index, amount) in [80, 70, 60, 50, 40, 30, 20, 10].enumerated() {
+            let env = Envelope(name: "Cat \(index)", kind: .spending)
+            context.insert(env)
+            context.insert(Transaction(date: date(2026, 3, 4), amount: Decimal(amount),
+                                       type: .expense, envelope: env))
+        }
+
+        let top = try #require(try compute(context).topSpending)
+        #expect(top.slices.count == 6)
+        #expect(top.categoryCount == 8)
+        #expect(top.other == 30)              // 20 + 10
+        // The donut still represents the whole month.
+        #expect(top.slices.reduce(Decimal(0)) { $0 + $1.amount } + top.other == 360)
     }
 
     @Test func planned_sumsBillEnvelopeBalances() throws {
@@ -150,5 +174,22 @@ struct MonthlyInsightsTests {
         let rate = try #require(try compute(context).savingRate)
         #expect(abs(rate.rate - 0.75) < 0.0001)
         #expect(rate.rating == .excellent)
+        // The amounts the tile's caption spells out, April income excluded.
+        #expect(rate.income == 2000)
+        #expect(rate.kept == 1500)
+    }
+
+    @Test func incomeAndSpending_ignoresAllocationsAndTransfers() {
+        let march = DateInterval(start: date(2026, 3, 1), end: date(2026, 3, 31))
+        let txs = [
+            Transaction(date: date(2026, 3, 1), amount: 900, type: .income),
+            Transaction(date: date(2026, 3, 5), amount: 200, type: .expense),
+            Transaction(date: date(2026, 3, 6), amount: 400, type: .allocation),
+            Transaction(date: date(2026, 3, 7), amount: 300, type: .transfer),
+            Transaction(date: date(2026, 2, 20), amount: 500, type: .income),   // out of range
+        ]
+        let totals = BudgetMath.incomeAndSpending(txs, in: march)
+        #expect(totals.income == 900)
+        #expect(totals.spending == 200)
     }
 }

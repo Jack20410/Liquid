@@ -24,8 +24,10 @@ struct CategoryBadge: View {
     }
 }
 
-/// Resolves the icon and color for a transaction or envelope. Category colors come
-/// from a stable `[Envelope.ID: Color]` map the caller builds once per list.
+/// Resolves the icon and color for a transaction or envelope, in that order of
+/// preference: what the user chose on the envelope, then the automatic assignment,
+/// then a fallback from the envelope's kind. Category colors come from a stable
+/// `[Envelope.ID: Color]` map the caller builds once per list.
 enum CategoryStyle {
     private static let palette = Color.categoryPalette
 
@@ -47,7 +49,8 @@ enum CategoryStyle {
         case .income: "arrow.down.circle.fill"
         case .transfer: "arrow.left.arrow.right"
         case .expense, .allocation:
-            transaction.envelope?.kind.icon ?? transaction.account?.type.icon ?? "cart"
+            // Match the envelope's own badge, so a row and its category agree.
+            transaction.envelope.map { icon(for: $0) } ?? transaction.account?.type.icon ?? "cart"
         }
     }
 
@@ -56,17 +59,27 @@ enum CategoryStyle {
         case .income: return .increase
         case .transfer: return .accentColor
         case .expense, .allocation:
-            if let id = transaction.envelope?.id, let color = categoryColors[id] { return color }
-            return .secondary
+            guard let envelope = transaction.envelope else { return .secondary }
+            if let chosen = customColor(for: envelope) { return chosen }
+            return categoryColors[envelope.id] ?? .secondary
         }
     }
 
     // MARK: Envelopes
 
-    static func icon(for envelope: Envelope) -> String { envelope.kind.icon }
+    /// The user's chosen icon, else a guess from the name, else the kind's icon.
+    static func icon(for envelope: Envelope) -> String {
+        envelope.symbol ?? CategoryIcon.suggestion(for: envelope.name) ?? envelope.kind.icon
+    }
+
+    /// Only the color the user picked, if any — callers that have their own
+    /// palette assignment use this to let a deliberate choice win.
+    static func customColor(for envelope: Envelope) -> Color? {
+        envelope.colorHex.flatMap { Color(hexString: $0) }
+    }
 
     static func color(for envelope: Envelope, categoryColors: [UUID: Color]) -> Color {
-        categoryColors[envelope.id] ?? fallbackColor(for: envelope.kind)
+        customColor(for: envelope) ?? categoryColors[envelope.id] ?? fallbackColor(for: envelope.kind)
     }
 
     private static func fallbackColor(for kind: EnvelopeKind) -> Color {

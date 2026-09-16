@@ -31,6 +31,11 @@ struct EnvelopeDetailView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        CategoryBadge(systemImage: CategoryStyle.icon(for: envelope),
+                                      color: CategoryStyle.color(for: envelope, categoryColors: [:]))
+                        Text(envelope.name).font(.headline)
+                    }
                     Text(balance.asCurrency)
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
                         .monospacedDigit()
