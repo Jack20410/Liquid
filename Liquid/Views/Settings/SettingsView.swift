@@ -11,6 +11,7 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var showOnboarding = false
     #if DEBUG
     @Environment(\.modelContext) private var modelContext
     @State private var confirmingReset = false
@@ -35,6 +36,15 @@ struct SettingsView: View {
                     Text("Reorder the dashboard cards and choose how each chart is drawn.")
                 }
 
+                Section {
+                    Button {
+                        showOnboarding = true
+                    } label: {
+                        Label("How Liquid works", systemImage: "questionmark.circle")
+                    }
+                    .tint(.primary)
+                }
+
                 Section("General") {
                     LabeledContent("Currency", value: Formatters.currencyCode)
                 }
@@ -55,6 +65,9 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showOnboarding) {
+                OnboardingView { showOnboarding = false }
+            }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -92,8 +105,6 @@ struct DashboardCustomizeView: View {
     @AppStorage(ChartStyleKey.cardOrder) private var orderRaw = DashboardCardID.rawValue(for: DashboardCardID.defaultOrder)
     @AppStorage(ChartStyleKey.cashFlow) private var cashFlowStyle: CashFlowChartStyle = .bars
     @AppStorage(ChartStyleKey.category) private var categoryStyle: CategoryChartStyle = .bars
-    @AppStorage(ChartStyleKey.accounts) private var accountsStyle: AccountsChartStyle = .bars
-    @AppStorage(ChartStyleKey.envelopes) private var envelopeStyle: EnvelopeChartStyle = .bars
 
     private var order: [DashboardCardID] {
         DashboardCardID.order(from: orderRaw)
@@ -137,8 +148,6 @@ struct DashboardCustomizeView: View {
         switch card {
         case .cashFlow: styleMenu($cashFlowStyle)
         case .spending: styleMenu($categoryStyle)
-        case .accounts: styleMenu($accountsStyle)
-        case .envelopes: styleMenu($envelopeStyle)
         default: EmptyView()
         }
     }

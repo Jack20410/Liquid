@@ -69,7 +69,7 @@ struct AccountsView: View {
                     }
                 }
             }
-            .navigationTitle("Accounts")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Account", systemImage: "plus") { editing = .new }
@@ -99,9 +99,9 @@ private struct NetWorthSummary: View {
                         .monospacedDigit()
                 }
                 HStack {
-                    subtotal("Assets", BudgetMath.totalAssets(accounts), .green)
+                    subtotal("Assets", BudgetMath.totalAssets(accounts), .increase)
                     Spacer()
-                    subtotal("Liabilities", BudgetMath.totalLiabilities(accounts), .red)
+                    subtotal("Liabilities", BudgetMath.totalLiabilities(accounts), .decrease)
                 }
             }
             .padding(.vertical, 4)
@@ -146,7 +146,7 @@ private struct AccountRow: View {
                 creditCardTrailing
             } else {
                 Text(BudgetMath.accountBalance(account).asCurrency)
-                    .foregroundStyle(BudgetMath.accountBalance(account) < 0 ? .red : .secondary)
+                    .foregroundStyle(BudgetMath.accountBalance(account) < 0 ? .decrease : .secondary)
                     .monospacedDigit()
             }
         }
@@ -157,7 +157,7 @@ private struct AccountRow: View {
         let owed = BudgetMath.amountOwed(account)
         VStack(alignment: .trailing, spacing: 3) {
             Text(owed.asCurrency)
-                .foregroundStyle(owed > 0 ? .red : .secondary)
+                .foregroundStyle(owed > 0 ? .decrease : .secondary)
                 .monospacedDigit()
             if let available = BudgetMath.availableCredit(account), let limit = account.creditLimit {
                 Text("\(available.asCurrency) of \(limit.asCurrency)")
@@ -168,7 +168,7 @@ private struct AccountRow: View {
             if let utilization = BudgetMath.creditUtilization(account) {
                 ProgressView(value: utilization)
                     .frame(width: 90)
-                    .tint(utilization > 0.7 ? .red : .accentColor)
+                    .tint(utilization > 0.7 ? .decrease : .accentColor)
             }
         }
     }

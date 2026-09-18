@@ -18,6 +18,8 @@ enum AppTab: Hashable {
 
 struct RootTabView: View {
     @State private var selection: AppTab = .dashboard
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var showOnboarding = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -36,6 +38,16 @@ struct RootTabView: View {
             Tab("Distribute", systemImage: "arrow.branch", value: .distribute) {
                 DistributeView()
             }
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView {
+                hasCompletedOnboarding = true
+                showOnboarding = false
+            }
+        }
+        .task {
+            // Show the guide once, on first launch.
+            if !hasCompletedOnboarding { showOnboarding = true }
         }
     }
 }

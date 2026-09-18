@@ -17,21 +17,24 @@ import SwiftUI
 /// Stable, theme-independent colors for envelope flows, shared across the aggregate
 /// flow and per-distribution detail so an envelope keeps the same color everywhere.
 enum FlowPalette {
-    static let colors: [Color] = [.blue, .orange, .teal, .green, .pink, .purple, .indigo, .mint]
-
-    /// A deterministic color for an envelope id (same across launches).
-    static func color(for id: UUID) -> Color {
-        let sum = withUnsafeBytes(of: id.uuid) { bytes in
-            bytes.reduce(0) { $0 &+ Int($1) }
-        }
-        return colors[sum % colors.count]
+    /// A visually distinct color for the branch at `index` — unique per flow. Uses
+    /// the curated aquatic palette first, then spreads hues by the golden angle so
+    /// any number of envelopes stays distinguishable and no two branches collide
+    /// (unlike a hash of the id, which could map two envelopes to the same color).
+    static func color(at index: Int) -> Color {
+        let base = Color.categoryPalette
+        if index < base.count { return base[index] }
+        let step = 0.618033988749895   // golden-ratio conjugate: maximally spreads hues
+        let hue = (0.47 + Double(index - base.count + 1) * step).truncatingRemainder(dividingBy: 1)
+        return Color(hue: hue, saturation: 0.55, brightness: index.isMultiple(of: 2) ? 0.80 : 0.62)
     }
 
     /// Neutral color for the grouped "Other" slice.
     static let other: Color = .gray
 
-    /// The "money in" source color (the paycheck bar and the ribbons' origin).
-    static let source: Color = .green
+    /// The "money in" source color (the paycheck bar and the ribbons' origin) —
+    /// a paycheck inflow reads as an increase.
+    static let source: Color = .increase
 }
 
 struct DistributionFlowView: View {
@@ -306,11 +309,11 @@ private struct RibbonShape: Shape {
 #if DEBUG
 #Preview {
     DistributionFlowView(slices: [
-        .init(id: UUID(), name: "Rent", amount: 800, color: .blue),
-        .init(id: UUID(), name: "Groceries", amount: 400, color: .orange),
-        .init(id: UUID(), name: "Savings", amount: 500, color: .teal),
-        .init(id: UUID(), name: "Fun", amount: 200, color: .pink),
-        .init(id: UUID(), name: "Utilities", amount: 100, color: .green),
+        .init(id: UUID(), name: "Rent", amount: 800, color: .deepTeal),
+        .init(id: UUID(), name: "Groceries", amount: 400, color: Color(hex: 0xE0A94F)),
+        .init(id: UUID(), name: "Savings", amount: 500, color: .aqua),
+        .init(id: UUID(), name: "Fun", amount: 200, color: .seafoam),
+        .init(id: UUID(), name: "Utilities", amount: 100, color: Color(hex: 0x1D4E89)),
     ])
     .padding()
 }

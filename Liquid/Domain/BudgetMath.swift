@@ -96,6 +96,15 @@ enum BudgetMath {
         }
     }
 
+    /// Money free to spend right now: the combined balance of the day-to-day
+    /// *spending* envelopes, leaving bills and savings goals untouched. Overspent
+    /// spending envelopes lower it, so it can go negative (surface that in red).
+    static func safeToSpend(_ envelopes: [Envelope]) -> Decimal {
+        envelopes
+            .filter { $0.kind.isSafeToSpend }
+            .reduce(0) { $0 + envelopeBalance($1) }
+    }
+
     /// Progress toward an envelope's savings target in 0...1, or nil when no
     /// target is set (spec FR-14).
     static func targetProgress(_ envelope: Envelope) -> Double? {
@@ -103,6 +112,24 @@ enum BudgetMath {
         let balance = envelopeBalance(envelope)
         let ratio = (balance / target) as NSDecimalNumber
         return min(1, max(0, ratio.doubleValue))
+    }
+
+    // MARK: Envelope activity over a period
+
+    /// Total spent (expenses) from this envelope within `interval` — used for the
+    /// spend-vs-budget bars on the Envelopes screen.
+    static func envelopeSpend(_ envelope: Envelope, in interval: DateInterval) -> Decimal {
+        envelope.transactions
+            .filter { $0.type == .expense && interval.contains($0.date) }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Total allocated into this envelope within `interval` — the period's budget
+    /// baseline (what the envelope was funded with this month).
+    static func envelopeAllocated(_ envelope: Envelope, in interval: DateInterval) -> Decimal {
+        envelope.transactions
+            .filter { $0.type == .allocation && interval.contains($0.date) }
+            .reduce(0) { $0 + $1.amount }
     }
 
     // MARK: To Be Budgeted
@@ -117,6 +144,35 @@ enum BudgetMath {
             case .expense, .transfer: sum
             }
         }
+    }
+
+    // MARK: Savings rate
+
+    /// Money in and money out over `interval`. Allocations and transfers are
+    /// internal moves between the user's own envelopes and accounts, so neither
+    /// counts as income or spending.
+    static func incomeAndSpending(_ transactions: [Transaction],
+                                  in interval: DateInterval) -> (income: Decimal, spending: Decimal) {
+        var income: Decimal = 0
+        var spending: Decimal = 0
+        for tx in transactions where interval.contains(tx.date) {
+            switch tx.type {
+            case .income: income += tx.amount
+            case .expense: spending += tx.amount
+            case .allocation, .transfer: break
+            }
+        }
+        return (income, spending)
+    }
+
+    /// Share of income kept rather than spent over `interval`: (income − spending)
+    /// ÷ income. Nil when there was no income in the period (nothing to measure
+    /// against). May be negative when spending outran income — callers clamp to
+    /// 0...1 for a gauge but keep the raw value for the headline number.
+    static func savingsRate(_ transactions: [Transaction], in interval: DateInterval) -> Double? {
+        let (income, spending) = incomeAndSpending(transactions, in: interval)
+        guard income > 0 else { return nil }
+        return ((income - spending) / income).asDouble
     }
 
     // MARK: Net worth over time

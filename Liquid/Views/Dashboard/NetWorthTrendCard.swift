@@ -63,7 +63,7 @@ struct NetWorthTrendCard: View {
             Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
         }
         .font(.caption)
-        .foregroundStyle(up ? .green : .red)
+        .foregroundStyle(up ? Color.increase : Color.decrease)
     }
 
     @ViewBuilder
@@ -71,12 +71,12 @@ struct NetWorthTrendCard: View {
         Chart(series) { point in
             AreaMark(x: .value("Day", point.date),
                      y: .value("Net worth", point.value.asDouble))
-            .foregroundStyle(.blue.opacity(0.15))
+            .foregroundStyle(Color.accentColor.opacity(0.15))
             .interpolationMethod(.monotone)
 
             LineMark(x: .value("Day", point.date),
                      y: .value("Net worth", point.value.asDouble))
-            .foregroundStyle(.blue)
+            .foregroundStyle(Color.accentColor)
             .interpolationMethod(.monotone)
 
             if let selectedPoint {
@@ -95,7 +95,7 @@ struct NetWorthTrendCard: View {
                     }
                 PointMark(x: .value("Selected", selectedPoint.date),
                           y: .value("Net worth", selectedPoint.value.asDouble))
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.accentColor)
             }
         }
         .chartYAxis {

@@ -28,6 +28,7 @@ struct DashboardView: View {
 
     @State private var showingCalendar = false
     @State private var showingSettings = false
+    @State private var selectedMonth: Date = DashboardView.startOfMonth(.now)
     @AppStorage(ChartStyleKey.cardOrder) private var cardOrderRaw = DashboardCardID.rawValue(for: DashboardCardID.defaultOrder)
 
     private var isEmpty: Bool {
@@ -36,6 +37,28 @@ struct DashboardView: View {
 
     private var cardOrder: [DashboardCardID] {
         DashboardCardID.order(from: cardOrderRaw)
+    }
+
+    private static func startOfMonth(_ date: Date, calendar: Calendar = .current) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    /// The last 12 months, newest first, for the month picker.
+    private var monthOptions: [Date] {
+        let calendar = Calendar.current
+        let thisMonth = Self.startOfMonth(.now, calendar: calendar)
+        return (0..<12).compactMap { calendar.date(byAdding: .month, value: -$0, to: thisMonth) }
+    }
+
+    /// The reference point used to scope the insight tiles: "now" for the current
+    /// month, otherwise the last day of the selected month.
+    private var monthAsOf: Date {
+        let calendar = Calendar.current
+        let thisMonth = Self.startOfMonth(.now, calendar: calendar)
+        if calendar.isDate(selectedMonth, equalTo: thisMonth, toGranularity: .month) { return .now }
+        if let next = calendar.date(byAdding: .month, value: 1, to: selectedMonth),
+           let end = calendar.date(byAdding: .day, value: -1, to: next) { return end }
+        return selectedMonth
     }
 
     var body: some View {
@@ -62,9 +85,12 @@ struct DashboardView: View {
                     .background(Color(.systemGroupedBackground))
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    monthMenu
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingCalendar = true
                     } label: {
@@ -90,14 +116,51 @@ struct DashboardView: View {
         }
     }
 
+    /// The month picker shown in the navigation bar; scopes the insight tiles.
+    private var monthMenu: some View {
+        Menu {
+            ForEach(monthOptions, id: \.self) { month in
+                Button {
+                    selectedMonth = month
+                } label: {
+                    if Calendar.current.isDate(month, equalTo: selectedMonth, toGranularity: .month) {
+                        Label(month.formatted(.dateTime.month(.wide).year()), systemImage: "checkmark")
+                    } else {
+                        Text(month.formatted(.dateTime.month(.wide).year()))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selectedMonth.formatted(.dateTime.month(.wide).year()))
+                    .font(.headline)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(.primary)
+        }
+        .accessibilityLabel("Selected month")
+    }
+
     /// Render one dashboard card by id, in the user's chosen order. Cards with
     /// nothing to show are skipped.
     @ViewBuilder
     private func dashboardCard(_ card: DashboardCardID) -> some View {
         switch card {
-        case .toBeBudgeted:
-            ToBeBudgetedCard(amount: BudgetMath.toBeBudgeted(transactions: transactions)) {
-                selectedTab = .distribute
+        case .budgetRing:
+            if !envelopes.isEmpty {
+                BudgetRingCard(envelopes: envelopes, transactions: transactions) {
+                    selectedTab = .distribute
+                }
+            }
+        case .insights:
+            if !transactions.isEmpty {
+                InsightsGridCard(transactions: transactions, envelopes: envelopes,
+                                 accounts: accounts, month: monthAsOf)
+            }
+        case .recentTransactions:
+            if !transactions.isEmpty {
+                RecentTransactionsCard(transactions: transactions) { selectedTab = .transactions }
             }
         case .accounts:
             if !accounts.isEmpty {
@@ -117,56 +180,7 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - To Be Budgeted (hero tile)
-
-private struct ToBeBudgetedCard: View {
-    let amount: Decimal
-    var onDistribute: (() -> Void)?
-
-    private var statusColor: Color {
-        if amount > 0 { .green }
-        else if amount < 0 { .red }
-        else { .secondary }
-    }
-
-    private var caption: String {
-        if amount > 0 { "Income waiting for a job — distribute it into envelopes." }
-        else if amount < 0 { "Envelopes claim more than your income. Review allocations." }
-        else { "Every dollar has a job. Nicely done." }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("To Be Budgeted")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(amount.asCurrency)
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(statusColor)
-                .contentTransition(.numericText())
-            Text(caption)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            if amount > 0, let onDistribute {
-                Button(action: onDistribute) {
-                    Label("Distribute", systemImage: "arrow.branch")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 4)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("To Be Budgeted: \(amount.asCurrency)")
-    }
-}
-
-private let dashboardPalette: [Color] = [.blue, .orange, .teal, .yellow, .pink]
+private let dashboardPalette: [Color] = Color.categoryPalette
 
 // MARK: - Accounts
 
@@ -175,7 +189,6 @@ private struct AccountsCard: View {
     let onOpen: () -> Void
 
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(ChartStyleKey.accounts) private var style: AccountsChartStyle = .bars
 
     private var repository: SwiftDataBudgetRepository { SwiftDataBudgetRepository(context: modelContext) }
 
@@ -188,14 +201,10 @@ private struct AccountsCard: View {
             }
     }
 
-    private var maxMagnitude: Double {
-        accounts.map { abs(BudgetMath.accountBalance($0).asDouble) }.max() ?? 1
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Accounts", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: AccountsChartStyle.allCases)
+                EmptyView()
             }
 
             HStack {
@@ -205,7 +214,7 @@ private struct AccountsCard: View {
                     .font(.subheadline.weight(.semibold)).monospacedDigit()
             }
 
-            if style == .stacked { stackedBar }
+            stackedBar
 
             ForEach(groups, id: \.bank) { group in
                 VStack(alignment: .leading, spacing: 6) {
@@ -237,17 +246,10 @@ private struct AccountsCard: View {
                     .font(.footnote).foregroundStyle(.secondary).frame(width: 22)
                 Text(account.name).font(.subheadline).lineLimit(1)
                     .frame(minWidth: 60, alignment: .leading)
-                if style == .bars {
-                    GeometryReader { geo in
-                        Capsule().fill(negative ? Color.red : Color.blue)
-                            .frame(width: max(4, geo.size.width * abs(balance.asDouble) / maxMagnitude))
-                    }
-                    .frame(height: 12)
-                }
                 Spacer(minLength: 6)
                 Text(balance.asCurrency)
                     .font(.caption).monospacedDigit()
-                    .foregroundStyle(negative ? .red : .secondary)
+                    .foregroundStyle(negative ? Color.decrease : .secondary)
             }
         }
         .buttonStyle(.plain)
@@ -260,17 +262,17 @@ private struct AccountsCard: View {
         return VStack(alignment: .leading, spacing: 6) {
             GeometryReader { geo in
                 HStack(spacing: liabilities > 0 ? 2 : 0) {
-                    Capsule().fill(.green).frame(width: geo.size.width * assets / total)
+                    Capsule().fill(Color.increase).frame(width: geo.size.width * assets / total)
                     if liabilities > 0 {
-                        Capsule().fill(.red).frame(width: geo.size.width * liabilities / total)
+                        Capsule().fill(Color.decrease).frame(width: geo.size.width * liabilities / total)
                     }
                 }
             }
             .frame(height: 16)
             HStack {
-                Text("Assets \(Decimal(assets).asCurrency)").foregroundStyle(.green)
+                Text("Assets \(Decimal(assets).asCurrency)").foregroundStyle(Color.increase)
                 Spacer()
-                Text("Liabilities \(Decimal(liabilities).asCurrency)").foregroundStyle(.red)
+                Text("Liabilities \(Decimal(liabilities).asCurrency)").foregroundStyle(Color.decrease)
             }
             .font(.caption).monospacedDigit()
         }
@@ -282,8 +284,6 @@ private struct AccountsCard: View {
 private struct EnvelopesCard: View {
     let envelopes: [Envelope]
     let onOpen: () -> Void
-
-    @AppStorage(ChartStyleKey.envelopes) private var style: EnvelopeChartStyle = .bars
 
     private static let topN = 4
 
@@ -303,28 +303,24 @@ private struct EnvelopesCard: View {
             .enumerated()
             .map { i, env in
                 Item(id: env.id, name: env.name, balance: BudgetMath.envelopeBalance(env),
-                     target: env.target, color: dashboardPalette[i % dashboardPalette.count], envelope: env)
+                     target: env.target,
+                     color: CategoryStyle.customColor(for: env)
+                         ?? dashboardPalette[i % dashboardPalette.count],
+                     envelope: env)
             }
     }
 
     private var shown: [Item] { Array(ranked.prefix(Self.topN)) }
-    private var maxBalance: Double { max(ranked.map { $0.balance.asDouble }.max() ?? 1, 1) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Envelopes", onOpen: onOpen) {
-                ChartStyleMenu(selection: $style, options: EnvelopeChartStyle.allCases)
+                EmptyView()
             }
             Text("What's left to spend")
                 .font(.caption).foregroundStyle(.secondary)
 
-            if style == .bars {
-                VStack(spacing: 10) {
-                    ForEach(shown) { bulletRow($0) }
-                }
-            } else {
-                donut
-            }
+            donut
 
             if ranked.count > shown.count {
                 Button(action: onOpen) {
@@ -336,78 +332,32 @@ private struct EnvelopesCard: View {
         .dashboardCard()
     }
 
-    private func bulletRow(_ item: Item) -> some View {
-        let overspent = item.balance < 0
-        let fraction: Double = {
-            if let t = item.target, t > 0 { return clampUnit(item.balance.asDouble / t.asDouble) }
-            return clampUnit(item.balance.asDouble / maxBalance)
-        }()
-        return NavigationLink {
-            EnvelopeDetailView(envelope: item.envelope)
-        } label: {
-            HStack(spacing: 10) {
-                Text(item.name).font(.subheadline).lineLimit(1)
-                    .frame(width: 76, alignment: .leading)
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(.tertiarySystemFill))
-                        Capsule().fill(overspent ? Color.red : item.color)
-                            .frame(width: max(overspent ? 0 : 4, geo.size.width * fraction))
-                        if item.target != nil {
-                            Rectangle().fill(Color(.label).opacity(0.35))
-                                .frame(width: 2, height: 16)
-                                .position(x: geo.size.width - 1, y: 6)
-                        }
-                    }
-                }
-                .frame(height: 12)
-                Text(label(item))
-                    .font(.caption2).monospacedDigit()
-                    .foregroundStyle(overspent ? .red : .secondary)
-                    .frame(width: 96, alignment: .trailing)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func label(_ item: Item) -> String {
-        if let t = item.target, t > 0 {
-            let pct = Int((clampUnit(item.balance.asDouble / t.asDouble) * 100).rounded())
-            return "\(item.balance.asCurrency) · \(pct)%"
-        }
-        return item.balance.asCurrency
-    }
-
     private var donut: some View {
         let positive = shown.filter { $0.balance > 0 }
         let total = positive.reduce(Decimal(0)) { $0 + $1.balance }
         return VStack(spacing: 12) {
-            ZStack {
-                Chart(positive) { item in
-                    SectorMark(angle: .value("Balance", item.balance.asDouble),
-                               innerRadius: .ratio(0.62), angularInset: 1.5)
-                    .cornerRadius(4)
-                    .foregroundStyle(item.color)
-                }
-                .frame(height: 160)
+            MiniDonut(slices: positive.map {
+                DonutSlice(id: $0.id.uuidString, amount: $0.balance.asDouble, color: $0.color)
+            }) {
                 VStack(spacing: 1) {
                     Text("budgeted").font(.caption2).foregroundStyle(.secondary)
                     Text(total.asCurrency).font(.callout.weight(.semibold)).monospacedDigit()
                 }
             }
+            .frame(height: 160)
             VStack(spacing: 8) {
                 ForEach(shown) { item in
                     NavigationLink {
                         EnvelopeDetailView(envelope: item.envelope)
                     } label: {
                         HStack(spacing: 8) {
-                            Circle().fill(item.balance < 0 ? Color.red : item.color)
+                            Circle().fill(item.balance < 0 ? Color.decrease : item.color)
                                 .frame(width: 10, height: 10)
                             Text(item.name).font(.subheadline)
                             Spacer()
                             Text(item.balance.asCurrency)
                                 .font(.caption).monospacedDigit()
-                                .foregroundStyle(item.balance < 0 ? .red : .secondary)
+                                .foregroundStyle(item.balance < 0 ? Color.decrease : .secondary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -415,8 +365,6 @@ private struct EnvelopesCard: View {
             }
         }
     }
-
-    private func clampUnit(_ v: Double) -> Double { min(1, max(0, v)) }
 }
 
 // MARK: - Cash flow (last 30 days)
@@ -550,7 +498,7 @@ private struct CashFlowCard: View {
 
             selectionRule
         }
-        .chartForegroundStyleScale(["Income": Color.green, "Spending": Color.red])
+        .chartForegroundStyleScale(["Income": Color.increase, "Spending": Color.decrease])
         .chartLegend(position: .bottom, alignment: .leading)
         .chartXScale(domain: xDomain)
         .chartXAxis { cashFlowXAxis }
@@ -565,7 +513,7 @@ private struct CashFlowCard: View {
                 LineMark(x: .value("Day", d.day, unit: .day),
                          y: .value("Net", d.net))
                 .interpolationMethod(.monotone)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.accentColor)
             }
             RuleMark(y: .value("Zero", 0))
                 .foregroundStyle(.quaternary).lineStyle(StrokeStyle(lineWidth: 1))
@@ -621,12 +569,12 @@ private struct SelectedDayCallout: View {
             if income > 0 {
                 Text("In \(Decimal(income).asCurrency)")
                     .font(.caption2)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.increase)
             }
             if spending < 0 {
                 Text("Out \(Decimal(-spending).asCurrency)")
                     .font(.caption2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.decrease)
             }
         }
         .monospacedDigit()

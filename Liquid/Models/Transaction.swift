@@ -38,12 +38,12 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable, Hashable {
 
 @Model
 final class Transaction: Identifiable {
-    var id: UUID
-    var date: Date
+    var id: UUID = UUID()
+    var date: Date = Date.now
     /// Always stored as a positive value (spec §6.3).
-    var amount: Decimal
-    var type: TransactionType
-    var note: String
+    var amount: Decimal = 0
+    var type: TransactionType = TransactionType.expense
+    var note: String = ""
     /// The source account (money in/out). For transfers, this is the "from" side.
     var account: Account?
     /// The destination account for transfers (the "to" side); nil otherwise.

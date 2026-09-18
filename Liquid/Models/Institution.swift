@@ -11,13 +11,13 @@ import SwiftData
 
 @Model
 final class Institution: Identifiable {
-    var id: UUID
-    var name: String
+    var id: UUID = UUID()
+    var name: String = ""
 
     /// Accounts held at this institution. Deleting an institution un-assigns its
     /// accounts (nullify) rather than deleting the money records.
     @Relationship(deleteRule: .nullify, inverse: \Account.institution)
-    var accounts: [Account]
+    var accounts: [Account] = []
 
     init(id: UUID = UUID(), name: String, accounts: [Account] = []) {
         self.id = id

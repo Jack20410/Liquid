@@ -9,12 +9,18 @@
 import SwiftUI
 
 struct TransactionEditView: View {
-    /// Initial values for a brand-new transaction (e.g. the Pay Balance flow
-    /// opening a pre-filled transfer). Ignored when editing an existing one.
+    /// Initial values for a brand-new transaction — used by the Pay Balance flow
+    /// (a pre-filled transfer) and by natural-language "Say it" capture (a parsed
+    /// draft). Ignored when editing an existing one. All fields past `type` default
+    /// to nil, so callers set only what they know.
     struct Prefill {
         var type: TransactionType
-        var toAccountID: UUID?
-        var amount: Decimal?
+        var toAccountID: UUID? = nil
+        var amount: Decimal? = nil
+        var date: Date? = nil
+        var note: String? = nil
+        var accountID: UUID? = nil
+        var envelopeID: UUID? = nil
     }
 
     let target: TransactionEditTarget
@@ -144,8 +150,12 @@ struct TransactionEditView: View {
                 type = prefill.type
                 toAccountID = prefill.toAccountID
                 amount = prefill.amount
-                // Default the source to the first eligible account (not the target).
-                accountID = accounts.first { $0.id != prefill.toAccountID }?.id
+                if let d = prefill.date { date = d }
+                if let n = prefill.note { note = n }
+                envelopeID = prefill.envelopeID
+                // Use the prefilled account if given (Say it); otherwise default to
+                // the first eligible account that isn't the target (Pay Balance).
+                accountID = prefill.accountID ?? accounts.first { $0.id != prefill.toAccountID }?.id
             } else {
                 accountID = accounts.first?.id
                 amountFocused = true

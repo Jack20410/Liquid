@@ -26,8 +26,11 @@ protocol BudgetRepository {
     func deleteAccount(_ account: Account)
 
     // Envelopes
-    func createEnvelope(name: String, target: Decimal?) -> Envelope
-    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?)
+    @discardableResult
+    func createEnvelope(name: String, target: Decimal?, kind: EnvelopeKind,
+                        symbol: String?, colorHex: String?) -> Envelope
+    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?, kind: EnvelopeKind,
+                        symbol: String?, colorHex: String?)
     func setRule(_ strategy: AllocationStrategy, priority: Int, on envelope: Envelope)
     func deleteEnvelope(_ envelope: Envelope)
 
@@ -103,16 +106,23 @@ struct SwiftDataBudgetRepository: BudgetRepository {
 
     // MARK: Envelopes
 
-    func createEnvelope(name: String, target: Decimal?) -> Envelope {
-        let envelope = Envelope(name: name, target: target)
+    @discardableResult
+    func createEnvelope(name: String, target: Decimal?, kind: EnvelopeKind,
+                        symbol: String? = nil, colorHex: String? = nil) -> Envelope {
+        let envelope = Envelope(name: name, target: target, kind: kind,
+                                symbol: symbol, colorHex: colorHex)
         context.insert(envelope)
         save()
         return envelope
     }
 
-    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?) {
+    func updateEnvelope(_ envelope: Envelope, name: String, target: Decimal?, kind: EnvelopeKind,
+                        symbol: String? = nil, colorHex: String? = nil) {
         envelope.name = name
         envelope.target = target
+        envelope.kind = kind
+        envelope.symbol = symbol
+        envelope.colorHex = colorHex
         save()
     }
 

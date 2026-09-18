@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Foundation
 
 @main
 struct LiquidApp: App {
@@ -18,6 +19,14 @@ struct LiquidApp: App {
             Transaction.self,
             AllocationRule.self,
         ])
+
+        // iOS does not create Library/Application Support automatically, and a
+        // fresh device install can otherwise fail to create the SwiftData store
+        // there ("Failed to create file; code = 2 / parent directory missing").
+        // Ensure the directory exists before opening the store.
+        try? FileManager.default.createDirectory(
+            at: .applicationSupportDirectory, withIntermediateDirectories: true)
+
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
@@ -31,7 +40,9 @@ struct LiquidApp: App {
         WindowGroup {
             RootTabView()
                 .onAppear {
-                    #if DEBUG
+                    // Seed demo data only in the Simulator, so a real device you
+                    // run in Debug starts empty for real-life use.
+                    #if DEBUG && targetEnvironment(simulator)
                     SampleData.seedIfNeeded(sharedModelContainer.mainContext)
                     #endif
                 }

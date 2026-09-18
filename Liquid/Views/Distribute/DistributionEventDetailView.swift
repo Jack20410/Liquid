@@ -13,8 +13,9 @@ struct DistributionEventDetailView: View {
     let event: BudgetMath.DistributionEvent
 
     private var slices: [DistributionFlowView.Slice] {
-        event.shares.map {
-            .init(id: $0.id, name: $0.name, amount: $0.amount, color: FlowPalette.color(for: $0.id))
+        event.shares.enumerated().map { index, share in
+            .init(id: share.id, name: share.name, amount: share.amount,
+                  color: FlowPalette.color(at: index))
         }
     }
 
@@ -63,7 +64,7 @@ struct DistributionEventDetailView: View {
                 .padding(.bottom, 4)
             ForEach(Array(event.shares.enumerated()), id: \.element.id) { index, share in
                 HStack(spacing: 10) {
-                    Circle().fill(FlowPalette.color(for: share.id))
+                    Circle().fill(FlowPalette.color(at: index))
                         .frame(width: 10, height: 10)
                     Text(share.name)
                     Spacer()
